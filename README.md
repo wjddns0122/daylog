@@ -121,4 +121,4 @@ lib/
 
 This project is licensed under the **MIT License**.
 
-Copyright © 2026 A&I 4th. All rights reserved.
+Copyright © 2026 @Daylog. All rights reserved.
