@@ -54,20 +54,19 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<!-- TODO: Replace with your Google Reverse Client ID -->
-				<string>com.googleusercontent.apps.YOUR_GOOGLE_REVERSE_CLIENT_ID</string>
-				<!-- TODO: Replace with your Kakao Native App Key prefixed with 'kakao' -->
-				<string>kakaoYOUR_KAKAO_NATIVE_APP_KEY</string>
+				<string>com.googleusercontent.apps.374511035302-556kedfbee5jojmoh2g3sbtujmogts3n</string>
+				<string>kakao8eab33f31b26fadfeea77aab386aa8fe</string>
 			</array>
 		</dict>
 	</array>
+	<key>GIDClientID</key>
+	<string>374511035302-556kedfbee5jojmoh2g3sbtujmogts3n.apps.googleusercontent.com</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>kakaokompassauth</string>
 		<string>kakaolink</string>
 	</array>
 	<key>KAKAO_APP_KEY</key>
-	<!-- TODO: Replace with your Kakao Native App Key -->
-	<string>YOUR_KAKAO_NATIVE_APP_KEY</string>
+	<string>8eab33f31b26fadfeea77aab386aa8fe</string>
 </dict>
 </plist>

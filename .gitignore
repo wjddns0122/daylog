@@ -49,3 +49,7 @@ app.*.map.json
 google-services.json
 GoogleService-Info.plist
 lib/core/config/social_login_config.dart
+# Secrets
+.env
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
