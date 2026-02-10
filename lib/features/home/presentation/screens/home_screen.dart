@@ -7,6 +7,7 @@ import 'package:marquee/marquee.dart';
 import '../../../../core/presentation/screens/placeholder_screen.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../camera/presentation/screens/camera_screen.dart';
+import '../../../feed/domain/entities/feed_entity.dart';
 import '../../../feed/presentation/providers/feed_provider.dart';
 import '../../../feed/presentation/widgets/feed_card.dart';
 
@@ -176,27 +177,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final activeColor = const Color(0xFF414141);
     final inactiveColor = const Color(0xFF999999);
 
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.only(right: 20, bottom: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            IconButton(
-              icon: Icon(
-                Icons.view_agenda,
-                color: !_isGridMode ? activeColor : inactiveColor,
+    return SliverPersistentHeader(
+      pinned: true,
+      delegate: _SliverToggleBarDelegate(
+        child: Container(
+          color: const Color(0xFFD4D4D4),
+          padding: const EdgeInsets.only(right: 20, bottom: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(
+                // Figma: List Icon (2 horizontal bars)
+                icon: Icon(
+                  Icons.view_stream, // Closest match to 2 bars
+                  color: !_isGridMode ? activeColor : inactiveColor,
+                ),
+                onPressed: () => setState(() => _isGridMode = false),
               ),
-              onPressed: () => setState(() => _isGridMode = false),
-            ),
-            IconButton(
-              icon: Icon(
-                Icons.grid_view,
-                color: _isGridMode ? activeColor : inactiveColor,
+              IconButton(
+                // Figma: Grid Icon (4 squares)
+                icon: Icon(
+                  Icons.grid_view, // Standard grid icon
+                  color: _isGridMode ? activeColor : inactiveColor,
+                ),
+                onPressed: () => setState(() => _isGridMode = true),
               ),
-              onPressed: () => setState(() => _isGridMode = true),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -217,30 +224,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
 
         if (_isGridMode) {
+          // Sort by Like Count (High -> Low)
+          final sortedFeed = List<FeedEntity>.from(feedInternal)
+            ..sort((a, b) => b.likedBy.length.compareTo(a.likedBy.length));
+
           return SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 2,
+            ), // Figma: Tight spacing
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 1.0,
+                crossAxisCount: 4, // Figma: 4 columns
+                crossAxisSpacing: 2, // Figma: 2px gap
+                mainAxisSpacing: 2, // Figma: 2px gap
+                childAspectRatio: 0.79, // Figma: 98px / 124px ≈ 0.79
               ),
               delegate: SliverChildBuilderDelegate((context, index) {
-                final item = feedInternal[index];
+                final item = sortedFeed[index];
                 return ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.zero,
                   child: CachedNetworkImage(
                     imageUrl: item.url,
                     fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[300],
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
+                    placeholder: (context, url) =>
+                        Container(color: Colors.grey[300]),
                     errorWidget: (context, url, err) => const Icon(Icons.error),
                   ),
                 );
-              }, childCount: feedInternal.length),
+              }, childCount: sortedFeed.length),
             ),
           );
         } else {
@@ -315,5 +326,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
     );
+  }
+}
+
+class _SliverToggleBarDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+
+  _SliverToggleBarDelegate({required this.child});
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return child;
+  }
+
+  @override
+  double get maxExtent => 50.0;
+
+  @override
+  double get minExtent => 50.0;
+
+  @override
+  bool shouldRebuild(covariant _SliverToggleBarDelegate oldDelegate) {
+    return oldDelegate.child != child;
   }
 }
