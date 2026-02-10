@@ -48,3 +48,4 @@ app.*.map.json
 # Firebase Config
 google-services.json
 GoogleService-Info.plist
+lib/core/config/social_login_config.dart
