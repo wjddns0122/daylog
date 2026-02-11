@@ -1,6 +1,7 @@
 import 'package:daylog/features/auth/presentation/screens/login_screen.dart';
+import 'package:daylog/features/auth/presentation/screens/signup_screen.dart';
 import 'package:daylog/features/auth/presentation/viewmodels/auth_view_model.dart';
-import 'package:daylog/features/home/presentation/screens/home_screen.dart';
+import 'package:daylog/features/feed/presentation/screens/feed_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -18,10 +19,11 @@ GoRouter router(Ref ref) {
       final user = authState.valueOrNull;
 
       final isLoggingIn = state.uri.toString() == '/login';
+      final isSigningUp = state.uri.toString() == '/signup';
 
       if (isLoading) return null;
 
-      if (user == null && !isLoggingIn) {
+      if (user == null && !isLoggingIn && !isSigningUp) {
         return '/login';
       }
 
@@ -34,11 +36,15 @@ GoRouter router(Ref ref) {
     routes: [
       GoRoute(
         path: '/',
-        builder: (context, state) => const HomeScreen(),
+        builder: (context, state) => const FeedScreen(),
       ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/signup',
+        builder: (context, state) => const SignupScreen(),
       ),
     ],
   );

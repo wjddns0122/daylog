@@ -47,6 +47,74 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<UserModel?> loginWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final user = userCredential.user;
+      if (user == null) return null;
+
+      // Fetch user data from Firestore
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        return UserModel.fromDocument(doc);
+      }
+      // Fallback if user exists in Auth but not Firestore (edge case)
+      return UserModel(
+        uid: user.uid,
+        email: user.email ?? '',
+        nickname: user.displayName,
+        photoUrl: user.photoURL,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<UserModel?> signUpWithEmail({
+    required String email,
+    required String password,
+    required String name,
+    required String nickname,
+  }) async {
+    try {
+      final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final user = userCredential.user;
+      if (user == null) return null;
+
+      // Create new user in Firestore
+      final newUser = UserModel(
+        uid: user.uid,
+        email: email,
+        nickname: nickname,
+        photoUrl: null, // Default null for email signup
+        createdAt: DateTime.now(),
+      );
+
+      await _firestore.collection('users').doc(user.uid).set({
+        ...newUser.toJson(),
+        'name':
+            name, // Store real name explicitly if needed, or rely on internal logic
+        'loginMethod': 'email',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      return newUser;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
   Future<UserModel?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();

@@ -11,6 +11,42 @@ class AuthViewModel extends _$AuthViewModel {
     return ref.watch(authRepositoryProvider).authStateChanges;
   }
 
+  Future<void> login({
+    required String email,
+    required String password,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      final user = await ref.read(authRepositoryProvider).loginWithEmail(
+            email: email,
+            password: password,
+          );
+      state = AsyncValue.data(user);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> signUp({
+    required String email,
+    required String password,
+    required String name,
+    required String nickname,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      final user = await ref.read(authRepositoryProvider).signUpWithEmail(
+            email: email,
+            password: password,
+            name: name,
+            nickname: nickname,
+          );
+      state = AsyncValue.data(user);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
   Future<void> loginWithGoogle() async {
     state = const AsyncValue.loading();
     try {
@@ -43,6 +79,7 @@ class AuthViewModel extends _$AuthViewModel {
     state = const AsyncValue.loading();
     try {
       await ref.read(authRepositoryProvider).signOut();
+      state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }

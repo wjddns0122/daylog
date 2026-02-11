@@ -20,7 +20,7 @@ class FeedCard extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFE6E6E6), // Light Grey from Figma
+        color: AppTheme.lightGrey,
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
@@ -62,7 +62,7 @@ class FeedCard extends ConsumerWidget {
                       DateFormat.yMMMd().format(item.timestamp),
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF727272),
+                        color: AppTheme.textSecondary,
                       ),
                     ),
                   ],

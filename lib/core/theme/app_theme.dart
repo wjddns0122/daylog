@@ -5,9 +5,17 @@ class AppTheme {
   // Colors
   static const Color primaryColor = Color(0xFF2D3436); // Dark Charcoal
   static const Color accentColor = Color(0xFF6C5CE7); // Soft Purple/Blue
-  static const Color backgroundColor = Color(0xFFFFFFFF); // White
+  static const Color backgroundColor = Color(0xFFD4D4D4);
   static const Color surfaceColor = Color(0xFFF5F6FA); // Light Grey
   static const Color errorColor = Color(0xFFD63031); // Red
+  static const Color authInputFill = Color(0xFFF7F8F8);
+  static const Color authButton = Color(0xFF757575);
+  static const Color authTextBlack = Color(0xFF1D1617);
+  static const Color authTextGray = Color(0xFF7B6F72);
+
+  // Feed Colors
+  static const Color lightGrey = Color(0xFFE6E6E6); // Figma Surface/Card
+  static const Color textSecondary = Color(0xFF727272); // Date/Timestamp
 
   // Text Styles
   static final TextTheme textTheme = TextTheme(
@@ -15,6 +23,21 @@ class AppTheme {
       fontSize: 32,
       fontWeight: FontWeight.bold,
       color: primaryColor,
+    ),
+    headlineMedium: GoogleFonts.poppins(
+      fontSize: 20,
+      fontWeight: FontWeight.bold,
+      color: const Color(0xFF1D1617),
+    ),
+    titleMedium: GoogleFonts.poppins(
+      fontSize: 16,
+      fontWeight: FontWeight.w400, // Regular
+      color: const Color(0xFF1D1617),
+    ),
+    bodyMedium: GoogleFonts.inter(
+      fontSize: 12,
+      fontWeight: FontWeight.w500, // Medium
+      color: const Color(0xFF7B6F72),
     ),
     titleLarge: GoogleFonts.inter(
       fontSize: 20,
@@ -26,11 +49,8 @@ class AppTheme {
       fontWeight: FontWeight.normal,
       color: primaryColor,
     ),
-    bodyMedium: GoogleFonts.inter(
-      fontSize: 14,
-      fontWeight: FontWeight.normal,
-      color: primaryColor.withValues(alpha: 0.8),
-    ),
+
+    // bodyMedium removed here to use the one added below with Auth styles
   );
 
   static final ThemeData lightTheme = ThemeData(
@@ -48,6 +68,7 @@ class AppTheme {
       onSurface: primaryColor,
       onError: Colors.white,
     ),
+    fontFamily: GoogleFonts.notoSansKr().fontFamily,
     textTheme: textTheme,
     appBarTheme: AppBarTheme(
       backgroundColor: backgroundColor,
