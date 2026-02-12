@@ -15,10 +15,22 @@ class FeedRepositoryImpl implements FeedRepository {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs
-              .map((doc) => FeedEntity.fromFirestore(doc))
-              .toList();
-        });
+      return snapshot.docs.map((doc) => FeedEntity.fromFirestore(doc)).toList();
+    });
+  }
+
+  @override
+  Stream<List<FeedEntity>> getLikedFeedStream(String userId) {
+    return _firestore
+        .collection('shots')
+        .where('likedBy', arrayContains: userId)
+        .snapshots()
+        .map((snapshot) {
+      final list =
+          snapshot.docs.map((doc) => FeedEntity.fromFirestore(doc)).toList();
+      list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return list;
+    });
   }
 
   @override

@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../features/calendar/presentation/screens/calendar_screen.dart';
+import '../../../../features/likes/presentation/screens/like_screen.dart';
 import 'package:marquee/marquee.dart';
 
-import '../../../../core/presentation/screens/placeholder_screen.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../camera/presentation/screens/camera_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
@@ -28,7 +28,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     const SizedBox.shrink(), // Index 0 handled by CustomScrollView
     const CalendarScreen(),
     const CameraScreen(),
-    const PlaceholderScreen(title: 'Likes', icon: Icons.favorite),
+    const LikeScreen(),
     const ProfileScreen(),
   ];
 

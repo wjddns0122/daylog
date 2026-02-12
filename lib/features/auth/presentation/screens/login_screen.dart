@@ -96,16 +96,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () {},
-            child: Text(
-              '비밀번호를 잊어버리셨나요?',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.authInputFill,
-                    decoration: TextDecoration.underline,
-                    decorationColor: AppTheme.authInputFill,
-                    fontSize: 12,
-                  ),
+          child: Center(
+            child: TextButton(
+              onPressed: () {},
+              child: Text(
+                '비밀번호를 잊어버리셨나요?',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.authInputFill,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppTheme.authInputFill,
+                      fontSize: 12,
+                    ),
+              ),
             ),
           ),
         ),

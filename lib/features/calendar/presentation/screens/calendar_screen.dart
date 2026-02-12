@@ -64,8 +64,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         children: [
                           _buildCalendarContainer(),
                           Positioned(
-                            bottom: -40,
-                            right: 0,
+                            bottom: -100,
+                            right: -40,
                             child: IgnorePointer(
                               child: _buildFloatingGalleryIcon(),
                             ),
@@ -95,7 +95,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
         onPressed: () {
-          // Provide back navigation if needed
+          Navigator.pop(context);
         },
       ),
       title: Image.asset(
@@ -168,9 +168,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildFloatingGalleryIcon() {
     return Transform.rotate(
-      angle: 0.15,
+      angle: 0.3,
       child: Opacity(
-        opacity: 0.9, // Slight transparency as requested
+        opacity: 0.8, // Slight transparency as requested
         child: Image.asset(
           'assets/images/logo2.png',
           width: 135,
@@ -195,7 +195,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             blurRadius: 10,
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.2),
             offset: const Offset(4, 4),
             blurRadius: 10,
           ),

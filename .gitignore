@@ -53,3 +53,5 @@ lib/core/config/social_login_config.dart
 .env
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
+
+.sisyphus
