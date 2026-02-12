@@ -1,16 +1,16 @@
 import 'dart:io';
 import 'package:google_generative_ai/google_generative_ai.dart';
-import '../../../../core/constants/api_keys.dart';
+// import '../../../../core/constants/api_keys.dart';
 
 class AiService {
   late final GenerativeModel _model;
 
-  AiService() {
-    _model = GenerativeModel(
-      model: 'gemini-1.5-flash',
-      apiKey: ApiKeys.geminiApiKey,
-    );
-  }
+  // AiService() {
+  //   _model = GenerativeModel(
+  //     model: 'gemini-1.5-flash',
+  //     apiKey: ApiKeys.geminiApiKey,
+  //   );
+  // }
 
   Future<String> generateJournalFromImage(File image) async {
     try {

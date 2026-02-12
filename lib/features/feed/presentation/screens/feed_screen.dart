@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../features/calendar/presentation/screens/calendar_screen.dart';
 import 'package:marquee/marquee.dart';
 
 import '../../../../core/presentation/screens/placeholder_screen.dart';
@@ -25,7 +26,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
   final List<Widget> _screens = [
     const SizedBox.shrink(), // Index 0 handled by CustomScrollView
-    const PlaceholderScreen(title: 'Calendar', icon: Icons.calendar_month),
+    const CalendarScreen(),
     const CameraScreen(),
     const PlaceholderScreen(title: 'Likes', icon: Icons.favorite),
     const ProfileScreen(),
