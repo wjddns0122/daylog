@@ -9,6 +9,7 @@ import 'package:marquee/marquee.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../camera/presentation/screens/camera_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
+import '../../../camera/presentation/widgets/developing_card.dart';
 import '../providers/feed_provider.dart';
 import '../widgets/feed_card.dart';
 import '../widgets/feed_grid_item.dart';
@@ -245,6 +246,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           return SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = feedInternal[index];
+              if (item.status == 'PENDING') {
+                return DevelopingCard(item: item);
+              }
               return FeedCard(item: item);
             }, childCount: feedInternal.length),
           );

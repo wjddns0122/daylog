@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Post Schema v2",
+  "type": "object",
+  "required": ["authorId", "status", "releaseTime", "createdAt", "dailyKey"],
+  "properties": {
+    "authorId": { "type": "string" },
+    "status": { "type": "string", "enum": ["PENDING", "PROCESSING", "RELEASED"] },
+    "releaseTime": { "type": "string", "format": "date-time" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "dailyKey": { "type": "string", "pattern": "^[a-zA-Z0-9]+_\\d{8}$" },
+    "version": { "type": "integer" },
+    "requestId": { "type": "string" },
+    "leaseOwner": { "type": "string" },
+    "leaseExpiresAt": { "type": "string", "format": "date-time" },
+    "processAttempts": { "type": "integer" },
+    "ai": { "type": "object" },
+    "aiError": { "type": "string" },
+    "caption": { "type": "string" },
+    "imageUrl": { "type": "string" }
+  }
+}

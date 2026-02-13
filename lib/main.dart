@@ -1,6 +1,12 @@
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:daylog/app/router.dart';
 import 'package:daylog/firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +20,19 @@ void main() async {
 
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  if (kDebugMode) {
+    try {
+      final host = Platform.isAndroid ? '10.0.2.2' : 'localhost';
+      await FirebaseAuth.instance.useAuthEmulator(host, 9099);
+      FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
+      FirebaseFunctions.instance.useFunctionsEmulator(host, 5001);
+      await FirebaseStorage.instance.useStorageEmulator(host, 9199);
+      debugPrint('DEBUG: Connected to Firebase Emulators on $host');
+    } catch (e) {
+      debugPrint('DEBUG: Failed to connect to Firebase Emulators: $e');
+    }
+  }
 
   // Initialize Kakao SDK
   final kakaoNativeKey = dotenv.env['KAKAO_NATIVE_APP_KEY'] ?? '';

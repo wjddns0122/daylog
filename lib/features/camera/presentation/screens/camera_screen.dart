@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../providers/camera_provider.dart';
+import '../../../feed/presentation/screens/pending_screen.dart';
 
 class CameraScreen extends HookConsumerWidget {
   const CameraScreen({super.key});
@@ -14,7 +15,19 @@ class CameraScreen extends HookConsumerWidget {
     final captionController = useTextEditingController();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Daylog Gallery Mode')),
+      appBar: AppBar(
+        title: const Text('Daylog Gallery Mode'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.hourglass_empty),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PendingScreen()),
+              );
+            },
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           SingleChildScrollView(
@@ -114,11 +127,9 @@ class CameraScreen extends HookConsumerWidget {
                     .read(cameraProvider.notifier)
                     .uploadCurrentPhoto(captionController.text);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Upload Complete!')),
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const PendingScreen()),
                   );
-                  captionController.clear();
-                  // Optional: clear image logic if defined
                 }
               },
               child: const Icon(Icons.cloud_upload),

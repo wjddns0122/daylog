@@ -1,1 +1,73 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"daylog-16724","appId":"1:374511035302:android:3470eff0797b51ce6ca567","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"daylog-16724","appId":"1:374511035302:ios:73b80d374d6176f86ca567","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"daylog-16724","appId":"1:374511035302:ios:73b80d374d6176f86ca567","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"daylog-16724","configurations":{"android":"1:374511035302:android:3470eff0797b51ce6ca567","ios":"1:374511035302:ios:73b80d374d6176f86ca567","macos":"1:374511035302:ios:73b80d374d6176f86ca567","web":"1:374511035302:web:0678d52f9f717bce6ca567","windows":"1:374511035302:web:4eedbd1bdb6e2d5f6ca567"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "daylog-16724",
+          "appId": "1:374511035302:android:3470eff0797b51ce6ca567",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "daylog-16724",
+          "appId": "1:374511035302:ios:73b80d374d6176f86ca567",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "daylog-16724",
+          "appId": "1:374511035302:ios:73b80d374d6176f86ca567",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "daylog-16724",
+          "configurations": {
+            "android": "1:374511035302:android:3470eff0797b51ce6ca567",
+            "ios": "1:374511035302:ios:73b80d374d6176f86ca567",
+            "macos": "1:374511035302:ios:73b80d374d6176f86ca567",
+            "web": "1:374511035302:web:0678d52f9f717bce6ca567",
+            "windows": "1:374511035302:web:4eedbd1bdb6e2d5f6ca567"
+          }
+        }
+      }
+    }
+  },
+  "functions": {
+    "predeploy": [
+      "npm --prefix \"$RESOURCE_DIR\" run lint",
+      "npm --prefix \"$RESOURCE_DIR\" run build"
+    ],
+    "source": "functions"
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "ui": {
+      "enabled": true
+    },
+    "storage": {
+      "port": 9199,
+      "rules": "storage.rules"
+    }
+  }
+}

@@ -37,3 +37,13 @@ class FeedNotifier extends StreamNotifier<List<FeedEntity>> {
 final feedProvider = StreamNotifierProvider<FeedNotifier, List<FeedEntity>>(
   FeedNotifier.new,
 );
+
+final currentPendingPostProvider =
+    StreamProvider.autoDispose<FeedEntity?>((ref) {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    return Stream.value(null);
+  }
+  final repository = ref.watch(feedRepositoryProvider);
+  return repository.getMyPendingPost(user.uid);
+});

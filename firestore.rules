@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /posts/{postId} {
+      allow read: if resource.data.status == 'RELEASED' ||
+                  (request.auth != null && resource.data.authorId == request.auth.uid);
+
+      allow create: if false;
+
+      allow update: if request.auth != null &&
+                    resource.data.authorId == request.auth.uid &&
+                    !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'releaseTime', 'dailyKey', 'authorId', 'version']);
+    }
+
+    match /daily_locks/{lockId} {
+      allow read, write: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

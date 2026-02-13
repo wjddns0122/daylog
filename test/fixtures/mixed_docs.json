@@ -1,0 +1,24 @@
+{
+  "legacy_doc": {
+    "userId": "user_1",
+    "timestamp": "2023-01-01T12:00:00Z",
+    "content": "Legacy content"
+  },
+  "v2_pending": {
+    "authorId": "user_1",
+    "status": "PENDING",
+    "createdAt": "2024-01-01T12:00:00Z",
+    "releaseTime": "2024-01-01T18:00:00Z",
+    "dailyKey": "user_1_20240101",
+    "version": 1
+  },
+  "v2_released": {
+    "authorId": "user_1",
+    "status": "RELEASED",
+    "createdAt": "2024-01-01T12:00:00Z",
+    "releaseTime": "2024-01-01T18:00:00Z",
+    "dailyKey": "user_1_20240101",
+    "version": 2,
+    "ai": { "mood": "calm" }
+  }
+}

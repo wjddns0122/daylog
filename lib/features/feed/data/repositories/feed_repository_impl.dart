@@ -11,8 +11,9 @@ class FeedRepositoryImpl implements FeedRepository {
   @override
   Stream<List<FeedEntity>> getFeedStream() {
     return _firestore
-        .collection('shots')
-        .orderBy('timestamp', descending: true)
+        .collection('posts')
+        .where('status', isEqualTo: 'RELEASED')
+        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) => FeedEntity.fromFirestore(doc)).toList();
@@ -22,8 +23,9 @@ class FeedRepositoryImpl implements FeedRepository {
   @override
   Stream<List<FeedEntity>> getLikedFeedStream(String userId) {
     return _firestore
-        .collection('shots')
+        .collection('posts')
         .where('likedBy', arrayContains: userId)
+        .where('status', isEqualTo: 'RELEASED')
         .snapshots()
         .map((snapshot) {
       final list =
@@ -34,9 +36,23 @@ class FeedRepositoryImpl implements FeedRepository {
   }
 
   @override
+  Stream<FeedEntity?> getMyPendingPost(String userId) {
+    return _firestore
+        .collection('posts')
+        .where('authorId', isEqualTo: userId)
+        .where('status', isEqualTo: 'PENDING')
+        .limit(1)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isEmpty) return null;
+      return FeedEntity.fromFirestore(snapshot.docs.first);
+    });
+  }
+
+  @override
   Future<void> deletePost(String postId, String imageUrl) async {
     // 1. Delete from Firestore
-    await _firestore.collection('shots').doc(postId).delete();
+    await _firestore.collection('posts').doc(postId).delete();
 
     // 2. Delete from Storage
     try {
@@ -49,7 +65,7 @@ class FeedRepositoryImpl implements FeedRepository {
 
   @override
   Future<void> toggleLike(String postId, String userId, bool isLiked) async {
-    final docRef = _firestore.collection('shots').doc(postId);
+    final docRef = _firestore.collection('posts').doc(postId);
 
     if (isLiked) {
       // Currently liked, so remove like
