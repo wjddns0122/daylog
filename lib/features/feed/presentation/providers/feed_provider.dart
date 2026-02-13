@@ -38,12 +38,29 @@ final feedProvider = StreamNotifierProvider<FeedNotifier, List<FeedEntity>>(
   FeedNotifier.new,
 );
 
+final currentUserIdProvider = Provider<String?>((ref) {
+  return FirebaseAuth.instance.currentUser?.uid;
+});
+
+final currentUserLatestPostProvider = StreamProvider.autoDispose<FeedEntity?>(
+  (ref) {
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) {
+      return Stream.value(null);
+    }
+
+    final repository = ref.watch(feedRepositoryProvider);
+    return repository.getLatestPostForUser(userId);
+  },
+);
+
 final currentPendingPostProvider =
     StreamProvider.autoDispose<FeedEntity?>((ref) {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) {
     return Stream.value(null);
   }
+
   final repository = ref.watch(feedRepositoryProvider);
-  return repository.getMyPendingPost(user.uid);
+  return repository.getMyPendingPost(userId);
 });

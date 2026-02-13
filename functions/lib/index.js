@@ -1,11 +1,36 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.repairWorker = exports.releaseWorker = exports.createPostIntent = void 0;
+exports.repairWorker = exports.processPost = exports.createPostIntent = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const functions_1 = require("firebase-admin/functions");
 const firestore_1 = require("firebase-admin/firestore");
+const tasks_1 = require("firebase-functions/v2/tasks");
+const ai_1 = require("./ai");
 admin.initializeApp();
 const db = admin.firestore();
+const PROCESS_DELAY_SECONDS = 1 * 60; // TODO: revert to 6 * 60 * 60 after testing
+const PROCESSING_LEASE_MS = 10 * 60 * 1000;
+const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
+const enqueueProcessPost = async (postId, scheduleDelaySeconds) => {
+    if (isEmulator) {
+        // In emulator, Cloud Tasks is not available. Use setTimeout instead.
+        console.info(`[Emulator] Scheduling processPostDirect for ${postId} in ${scheduleDelaySeconds}s`);
+        setTimeout(() => {
+            processPostDirect(postId).catch((err) => console.error("[Emulator] processPostDirect failed:", err));
+        }, scheduleDelaySeconds * 1000);
+        return;
+    }
+    await (0, functions_1.getFunctions)()
+        .taskQueue("processPost")
+        .enqueue({ postId }, { scheduleDelaySeconds });
+};
+const sendReleaseNotificationPlaceholder = async (userId, postId) => {
+    console.info("FCM placeholder: send RELEASED notification", {
+        userId,
+        postId,
+    });
+};
 exports.createPostIntent = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
@@ -17,8 +42,11 @@ exports.createPostIntent = functions.https.onCall(async (data, context) => {
     }
     const today = new Date().toISOString().split("T")[0];
     const dailyKey = `${uid}_${today}`;
-    const releaseTime = firestore_1.Timestamp.fromDate(new Date(Date.now() + 6 * 60 * 60 * 1000));
+    const releaseTime = firestore_1.Timestamp.fromDate(new Date(Date.now() + PROCESS_DELAY_SECONDS * 1000));
     const postRef = db.collection("posts").doc();
+    let targetPostId = postRef.id;
+    let targetReleaseTime = releaseTime;
+    let shouldEnqueue = false;
     try {
         await db.runTransaction(async (t) => {
             const lockRef = db.collection("daily_locks").doc(dailyKey);
@@ -26,8 +54,14 @@ exports.createPostIntent = functions.https.onCall(async (data, context) => {
             if (lockDoc.exists) {
                 throw new functions.https.HttpsError("already-exists", "ALREADY_POSTED");
             }
-            const querySnapshot = await t.get(db.collection("posts").where("requestId", "==", requestId).limit(1));
-            if (!querySnapshot.empty) {
+            const existingByRequest = await t.get(db.collection("posts").where("requestId", "==", requestId).limit(1));
+            if (!existingByRequest.empty) {
+                const existingDoc = existingByRequest.docs[0];
+                targetPostId = existingDoc.id;
+                const existingData = existingDoc.data();
+                if (existingData.releaseTime instanceof firestore_1.Timestamp) {
+                    targetReleaseTime = existingData.releaseTime;
+                }
                 return;
             }
             t.set(lockRef, {
@@ -45,71 +79,127 @@ exports.createPostIntent = functions.https.onCall(async (data, context) => {
                 version: 1,
                 requestId,
             });
+            shouldEnqueue = true;
         });
+        if (shouldEnqueue) {
+            try {
+                await enqueueProcessPost(targetPostId, PROCESS_DELAY_SECONDS);
+            }
+            catch (error) {
+                console.error("Failed to enqueue processPost:", error);
+                throw new functions.https.HttpsError("internal", "Post was created, but scheduling failed.");
+            }
+        }
         return {
             success: true,
             data: {
-                postId: postRef.id,
+                postId: targetPostId,
                 status: "PENDING",
-                releaseTime: releaseTime.toDate().toISOString(),
+                releaseTime: targetReleaseTime.toDate().toISOString(),
             },
         };
     }
     catch (error) {
-        if (error.code === "already-exists") {
+        if (error instanceof functions.https.HttpsError) {
             throw error;
         }
-        console.error("Transaction failure:", error);
+        console.error("createPostIntent failed:", error);
         throw new functions.https.HttpsError("internal", "Transaction failed");
     }
 });
-exports.releaseWorker = functions.https.onRequest(async (req, res) => {
-    const { postId } = req.body;
-    if (!postId) {
-        res.status(400).send("Missing postId");
+const processPostDirect = async (postId) => {
+    if (typeof postId !== "string" || postId.trim().length === 0) {
+        console.error("processPostDirect: invalid postId", postId);
         return;
     }
     const postRef = db.collection("posts").doc(postId);
+    let imageUrl = "";
+    let authorId = "";
+    let acquiredLease = false;
     try {
         await db.runTransaction(async (t) => {
-            const doc = await t.get(postRef);
-            if (!doc.exists)
+            const snapshot = await t.get(postRef);
+            if (!snapshot.exists) {
                 return;
-            const data = doc.data();
-            if (data.status !== "PENDING")
+            }
+            const post = snapshot.data();
+            if (post.status === "RELEASED") {
                 return;
-            const now = firestore_1.Timestamp.now();
-            if (now < data.releaseTime)
+            }
+            if (post.status !== "PENDING") {
                 return;
+            }
+            if (post.releaseTime instanceof firestore_1.Timestamp &&
+                firestore_1.Timestamp.now() < post.releaseTime) {
+                return;
+            }
+            if (typeof post.imageUrl !== "string" ||
+                typeof post.authorId !== "string") {
+                throw new Error("Invalid post payload for processing");
+            }
+            imageUrl = post.imageUrl;
+            authorId = post.authorId;
+            acquiredLease = true;
             t.update(postRef, {
                 status: "PROCESSING",
                 version: firestore_1.FieldValue.increment(1),
-                leaseOwner: "worker_" + Date.now(),
-                leaseExpiresAt: firestore_1.Timestamp.fromMillis(Date.now() + 10 * 60 * 1000),
+                leaseOwner: `task_${Date.now()}`,
+                leaseExpiresAt: firestore_1.Timestamp.fromMillis(Date.now() + PROCESSING_LEASE_MS),
+                processingStartedAt: firestore_1.FieldValue.serverTimestamp(),
             });
         });
+        if (!acquiredLease) {
+            return;
+        }
+        const aiResult = await (0, ai_1.generateCurationAndMusic)(imageUrl);
         await db.runTransaction(async (t) => {
-            const doc = await t.get(postRef);
-            if (!doc.exists)
+            const snapshot = await t.get(postRef);
+            if (!snapshot.exists) {
                 return;
-            const data = doc.data();
-            if (data.status !== "PROCESSING")
+            }
+            const post = snapshot.data();
+            if (post.status !== "PROCESSING") {
                 return;
+            }
             t.update(postRef, {
                 status: "RELEASED",
                 version: firestore_1.FieldValue.increment(1),
-                ai: { mood: "Simulated Warmth", music: "LoFi Beats" },
+                ai: {
+                    curation: aiResult.curation,
+                    youtubeUrl: aiResult.youtubeUrl,
+                    youtubeTitle: aiResult.youtubeTitle,
+                },
                 processedAt: firestore_1.FieldValue.serverTimestamp(),
+                leaseOwner: firestore_1.FieldValue.delete(),
+                leaseExpiresAt: firestore_1.FieldValue.delete(),
             });
         });
-        res.json({ success: true });
+        await sendReleaseNotificationPlaceholder(authorId, postId);
     }
     catch (error) {
-        console.error(error);
-        res.status(500).send("Internal Error");
+        console.error("processPostDirect failed:", { postId, error });
+        if (acquiredLease) {
+            await postRef.update({
+                status: "PENDING",
+                leaseOwner: firestore_1.FieldValue.delete(),
+                leaseExpiresAt: firestore_1.FieldValue.delete(),
+                lastError: String(error),
+                processAttempts: firestore_1.FieldValue.increment(1),
+            });
+        }
+        throw error;
     }
+};
+exports.processPost = (0, tasks_1.onTaskDispatched)(async (request) => {
+    const payload = request.data;
+    const postId = payload === null || payload === void 0 ? void 0 : payload.postId;
+    if (typeof postId !== "string" || postId.trim().length === 0) {
+        console.error("processPost: invalid payload", payload);
+        return;
+    }
+    await processPostDirect(postId);
 });
-exports.repairWorker = functions.https.onRequest(async (req, res) => {
+exports.repairWorker = functions.https.onRequest(async (_req, res) => {
     const now = firestore_1.Timestamp.now();
     const snapshot = await db
         .collection("posts")
@@ -117,6 +207,7 @@ exports.repairWorker = functions.https.onRequest(async (req, res) => {
         .where("leaseExpiresAt", "<", now)
         .get();
     const batch = db.batch();
+    const requeueJobs = [];
     let count = 0;
     snapshot.forEach((doc) => {
         batch.update(doc.ref, {
@@ -125,11 +216,21 @@ exports.repairWorker = functions.https.onRequest(async (req, res) => {
             leaseExpiresAt: firestore_1.FieldValue.delete(),
             processAttempts: firestore_1.FieldValue.increment(1),
         });
+        requeueJobs.push(enqueueProcessPost(doc.id, 0));
         count++;
     });
     if (count > 0) {
         await batch.commit();
+        const requeueResults = await Promise.allSettled(requeueJobs);
+        const failedRequeues = requeueResults.filter((r) => r.status === "rejected").length;
+        if (failedRequeues > 0) {
+            console.error("repairWorker: failed to requeue some posts", {
+                failedRequeues,
+            });
+        }
+        res.json({ repaired: count, failedRequeues });
+        return;
     }
-    res.json({ repaired: count });
+    res.json({ repaired: 0, failedRequeues: 0 });
 });
 //# sourceMappingURL=index.js.map

@@ -36,6 +36,20 @@ class FeedRepositoryImpl implements FeedRepository {
   }
 
   @override
+  Stream<FeedEntity?> getLatestPostForUser(String userId) {
+    return _firestore
+        .collection('posts')
+        .where('authorId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .limit(1)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isEmpty) return null;
+      return FeedEntity.fromFirestore(snapshot.docs.first);
+    });
+  }
+
+  @override
   Stream<FeedEntity?> getMyPendingPost(String userId) {
     return _firestore
         .collection('posts')

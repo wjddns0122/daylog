@@ -6,7 +6,9 @@ import 'package:marquee/marquee.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key});
+  const CalendarScreen({super.key, this.enableHeaderMarquee = true});
+
+  final bool enableHeaderMarquee;
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -132,19 +134,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
               left: 0,
               right: 0,
               height: 50,
-              child: Marquee(
-                text: 'A Day\'s Photos, 6 Hours of Excitement       ',
-                style: GoogleFonts.archivoBlack(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.black, // Matched FeedScreen
-                ),
-                scrollAxis: Axis.horizontal,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                blankSpace: 20.0,
-                velocity: 50.0,
-                startPadding: 0.0,
-              ),
+              child: widget.enableHeaderMarquee
+                  ? Marquee(
+                      text: 'A Day\'s Photos, 6 Hours of Excitement       ',
+                      style: GoogleFonts.archivoBlack(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.black, // Matched FeedScreen
+                      ),
+                      scrollAxis: Axis.horizontal,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      blankSpace: 20.0,
+                      velocity: 50.0,
+                      startPadding: 0.0,
+                    )
+                  : Text(
+                      'A Day\'s Photos, 6 Hours of Excitement',
+                      style: GoogleFonts.archivoBlack(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.black,
+                      ),
+                    ),
             ),
             // 3D Logo (Foreground) - Matches FeedScreen
             Positioned(

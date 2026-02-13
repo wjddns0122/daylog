@@ -9,6 +9,9 @@ class FeedEntity {
   final List<String> likedBy;
   final String status;
   final DateTime? releaseTime;
+  final String? aiCuration;
+  final String? musicTitle;
+  final String? musicUrl;
 
   FeedEntity({
     required this.id,
@@ -19,6 +22,9 @@ class FeedEntity {
     this.likedBy = const [],
     this.status = 'RELEASED',
     this.releaseTime,
+    this.aiCuration,
+    this.musicTitle,
+    this.musicUrl,
   });
 
   factory FeedEntity.fromFirestore(DocumentSnapshot doc) {
@@ -35,6 +41,15 @@ class FeedEntity {
         data['authorId'] as String? ?? data['userId'] as String?;
     final String status = data['status'] as String? ?? 'RELEASED';
     final DateTime? releaseTime = (data['releaseTime'] as Timestamp?)?.toDate();
+    final String? aiCuration = data['aiCuration'] as String? ??
+        data['aiCurationText'] as String? ??
+        data['curationText'] as String? ??
+        data['poeticText'] as String?;
+    final String? musicTitle =
+        data['musicTitle'] as String? ?? data['bgmTitle'] as String?;
+    final String? musicUrl = data['youtubeUrl'] as String? ??
+        data['musicUrl'] as String? ??
+        data['bgmUrl'] as String?;
 
     return FeedEntity(
       id: doc.id,
@@ -45,6 +60,9 @@ class FeedEntity {
       likedBy: List<String>.from(data['likedBy'] ?? []),
       status: status,
       releaseTime: releaseTime,
+      aiCuration: aiCuration,
+      musicTitle: musicTitle,
+      musicUrl: musicUrl,
     );
   }
 

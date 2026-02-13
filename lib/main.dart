@@ -21,7 +21,11 @@ void main() async {
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  if (kDebugMode) {
+  // Check if we should use Firebase Emulators
+  // Only use emulators if explicitly enabled in .env
+  final useEmulators = dotenv.env['USE_FIREBASE_EMULATOR'] == 'true';
+
+  if (kDebugMode && useEmulators) {
     try {
       final host = Platform.isAndroid ? '10.0.2.2' : 'localhost';
       await FirebaseAuth.instance.useAuthEmulator(host, 9099);

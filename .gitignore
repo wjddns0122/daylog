@@ -57,3 +57,4 @@ ios/Runner/GoogleService-Info.plist
 .sisyphus
 
 /functions/node_modules
+/functions/.env

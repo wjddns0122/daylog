@@ -10,14 +10,12 @@ void main() {
   });
 
   testWidgets('CalendarScreen renders correctly', (WidgetTester tester) async {
-    await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+    await tester.pumpWidget(
+      const MaterialApp(home: CalendarScreen(enableHeaderMarquee: false)),
+    );
 
     expect(find.text('Today_log'), findsOneWidget);
     expect(find.text('Show me your day today'), findsOneWidget);
     expect(find.byType(GridView), findsOneWidget);
-
-    // Dispose the widget tree to cancel Marquee timers
-    await tester.pumpWidget(const SizedBox());
-    await tester.pump();
   });
 }

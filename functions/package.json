@@ -15,12 +15,17 @@
   },
   "main": "lib/index.js",
   "dependencies": {
+    "@google-cloud/tasks": "^6.2.1",
+    "@google-cloud/vertexai": "^1.10.0",
+    "axios": "^1.13.5",
+    "dotenv": "^17.3.1",
     "firebase-admin": "^11.8.0",
-    "firebase-functions": "^4.3.1"
+    "firebase-functions": "^4.3.1",
+    "googleapis": "^171.4.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "firebase-functions-test": "^3.1.0"
+    "firebase-functions-test": "^3.1.0",
+    "typescript": "^5.0.0"
   },
   "private": true
 }

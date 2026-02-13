@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:daylog/features/camera/presentation/screens/result_screen.dart';
+import 'package:daylog/features/feed/domain/entities/feed_entity.dart';
 import 'package:daylog/features/feed/presentation/providers/feed_provider.dart';
 
 class PendingScreen extends ConsumerStatefulWidget {
@@ -20,6 +22,7 @@ class _PendingScreenState extends ConsumerState<PendingScreen>
   Timer? _timer;
   late AnimationController _animationController;
   late Animation<double> _flipAnimation;
+  bool _isNavigatingToResult = false;
 
   @override
   void initState() {
@@ -67,7 +70,30 @@ class _PendingScreenState extends ConsumerState<PendingScreen>
 
   @override
   Widget build(BuildContext context) {
-    final pendingPostAsync = ref.watch(currentPendingPostProvider);
+    ref.listen<AsyncValue<FeedEntity?>>(
+      currentUserLatestPostProvider,
+      (previous, next) {
+        final post = next.valueOrNull;
+        if (_isNavigatingToResult ||
+            post == null ||
+            post.status != 'RELEASED') {
+          return;
+        }
+
+        _isNavigatingToResult = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) {
+            return;
+          }
+
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => ResultScreen(post: post)),
+          );
+        });
+      },
+    );
+
+    final latestPostAsync = ref.watch(currentUserLatestPostProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFD4D4D4),
@@ -84,11 +110,15 @@ class _PendingScreenState extends ConsumerState<PendingScreen>
         ),
         centerTitle: true,
       ),
-      body: pendingPostAsync.when(
+      body: latestPostAsync.when(
         data: (post) {
           if (post == null) {
             return const Center(child: Text("No pending posts."));
           }
+          if (post.status != 'PENDING') {
+            return const Center(child: CircularProgressIndicator());
+          }
+
           final releaseTime =
               post.releaseTime ?? DateTime.now().add(const Duration(hours: 6));
           final remaining = releaseTime.difference(DateTime.now());
@@ -138,7 +168,7 @@ class _PendingScreenState extends ConsumerState<PendingScreen>
                           BoxShadow(
                             offset: const Offset(0, 4),
                             blurRadius: 10,
-                            color: Colors.black.withOpacity(0.15),
+                            color: Colors.black.withValues(alpha: 0.15),
                           ),
                         ],
                       ),
@@ -170,10 +200,10 @@ class _PendingScreenState extends ConsumerState<PendingScreen>
                       height: 20,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(22),
-                        border:
-                            Border.all(color: Colors.white.withOpacity(0.2)),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2)),
                       ),
                       child: Stack(
                         children: [
@@ -315,7 +345,8 @@ class _SplitFlapIconState extends State<_SplitFlapIcon>
                                     begin: Alignment.bottomCenter,
                                     end: Alignment.topCenter,
                                     colors: [
-                                      Colors.black.withOpacity(shadowOpacity),
+                                      Colors.black
+                                          .withValues(alpha: shadowOpacity),
                                       Colors.transparent,
                                     ],
                                     stops: const [
@@ -366,7 +397,8 @@ class _SplitFlapIconState extends State<_SplitFlapIcon>
                                       // So Shadow should be at Top Edge.
                                       end: Alignment.bottomCenter,
                                       colors: [
-                                        Colors.black.withOpacity(shadowOpacity),
+                                        Colors.black
+                                            .withValues(alpha: shadowOpacity),
                                         Colors.transparent,
                                       ],
                                     ),

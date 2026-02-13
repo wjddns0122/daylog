@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:daylog/features/auth/domain/models/user_model.dart';
 import 'package:daylog/features/auth/domain/repositories/auth_repository.dart';
