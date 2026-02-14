@@ -8,13 +8,14 @@ const DEFAULT_CURATION = "A quiet moment, held gently in time.";
 const DEFAULT_MUSIC_QUERY = "calm ambient instrumental";
 const DEFAULT_YOUTUBE_URL = "https://www.youtube.com/watch?v=5qap5aO4i9A";
 const DEFAULT_YOUTUBE_TITLE = "lofi hip hop radio - beats to relax/study to";
+const AI_BYPASS = process.env.AI_BYPASS === "false";
 const CURATION_PROMPT = [
     "You are an assistant for emotional curation from photos.",
     "Analyze the image and return only JSON.",
     "Fields:",
     "1) curation: sentiment description (curation) in 1-2 natural sentences.",
     "2) musicQuery: concise search query for background music on YouTube.",
-    "Output schema: {\"curation\": string, \"musicQuery\": string}",
+    'Output schema: {"curation": string, "musicQuery": string}',
 ].join("\n");
 const cleanJsonBlock = (rawText) => {
     return rawText.replace(/```json|```/g, "").trim();
@@ -167,6 +168,13 @@ const searchYouTubeMusic = async (query) => {
     }
 };
 const generateCurationAndMusic = async (imageUrl) => {
+    if (AI_BYPASS) {
+        return {
+            curation: DEFAULT_CURATION,
+            youtubeUrl: DEFAULT_YOUTUBE_URL,
+            youtubeTitle: DEFAULT_YOUTUBE_TITLE,
+        };
+    }
     try {
         const image = await fetchImageAsBase64(imageUrl);
         const modelOutput = (await analyzeWithVertex(image.data, image.mimeType)) ||

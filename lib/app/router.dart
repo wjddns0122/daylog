@@ -1,7 +1,14 @@
+import 'dart:io';
+
 import 'package:daylog/features/auth/presentation/screens/login_screen.dart';
 import 'package:daylog/features/auth/presentation/screens/signup_screen.dart';
 import 'package:daylog/features/auth/presentation/viewmodels/auth_view_model.dart';
+import 'package:daylog/features/camera/presentation/screens/compose_screen.dart';
 import 'package:daylog/features/feed/presentation/screens/feed_screen.dart';
+import 'package:daylog/features/feed/presentation/screens/pending_screen.dart';
+import 'package:daylog/features/notification/presentation/screens/notification_screen.dart';
+import 'package:daylog/features/profile/presentation/screens/profile_screen.dart';
+import 'package:daylog/features/settings/presentation/screens/settings_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -45,6 +52,33 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignupScreen(),
+      ),
+      GoRoute(
+        path: '/compose',
+        builder: (context, state) {
+          final imageFile = state.extra;
+          if (imageFile is! File) {
+            return const FeedScreen();
+          }
+
+          return ComposeScreen(imageFile: imageFile);
+        },
+      ),
+      GoRoute(
+        path: '/pending',
+        builder: (context, state) => const PendingScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationScreen(),
       ),
     ],
   );

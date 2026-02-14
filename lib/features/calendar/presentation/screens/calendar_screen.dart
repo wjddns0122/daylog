@@ -1,27 +1,41 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:daylog/features/camera/presentation/screens/result_screen.dart';
+import 'package:daylog/features/feed/domain/entities/feed_entity.dart';
+import 'package:daylog/features/feed/presentation/providers/feed_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:marquee/marquee.dart';
 import '../../../../core/theme/app_theme.dart';
 
-class CalendarScreen extends StatefulWidget {
+class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key, this.enableHeaderMarquee = true});
 
   final bool enableHeaderMarquee;
 
   @override
-  State<CalendarScreen> createState() => _CalendarScreenState();
+  ConsumerState<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
-  DateTime _focusedDay = DateTime.now();
+class _CalendarScreenState extends ConsumerState<CalendarScreen> {
+  late DateTime _focusedDay;
   DateTime? _selectedDay;
+  bool _isLoadingPosts = false;
+  String? _loadError;
+  Map<DateTime, FeedEntity> _postsByDate = {};
 
   @override
   void initState() {
     super.initState();
-    _selectedDay = DateTime.now();
+    final now = DateTime.now();
+    _focusedDay = DateTime(now.year, now.month, 1);
+    _selectedDay = DateTime(now.year, now.month, now.day);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadPostsForFocusedMonth();
+    });
   }
 
   @override
@@ -60,7 +74,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       const SizedBox(height: 20),
                       _buildMonthNavigation(),
                       const SizedBox(height: 10),
-                      // Wrap Calendar Container in a Stack to anchor the icon
                       Stack(
                         clipBehavior: Clip.none,
                         children: [
@@ -128,7 +141,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         color: AppTheme.backgroundColor,
         child: Stack(
           children: [
-            // Moving Background Text
             Positioned(
               top: 100,
               left: 0,
@@ -140,13 +152,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       style: GoogleFonts.archivoBlack(
                         fontSize: 36,
                         fontWeight: FontWeight.w400,
-                        color: Colors.black, // Matched FeedScreen
+                        color: Colors.black,
                       ),
                       scrollAxis: Axis.horizontal,
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      blankSpace: 20.0,
-                      velocity: 50.0,
-                      startPadding: 0.0,
+                      blankSpace: 20,
+                      velocity: 50,
+                      startPadding: 0,
                     )
                   : Text(
                       'A Day\'s Photos, 6 Hours of Excitement',
@@ -157,14 +169,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     ),
             ),
-            // 3D Logo (Foreground) - Matches FeedScreen
             Positioned(
               top: 40,
               left: 115,
               child: Transform.rotate(
                 angle: 14.51 * 3.1415926535 / 180,
                 child: SvgPicture.asset(
-                  'assets/svgs/logo.svg', // Feed uses logo.svg
+                  'assets/svgs/logo.svg',
                   width: 174,
                   height: 166,
                   fit: BoxFit.contain,
@@ -181,7 +192,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Transform.rotate(
       angle: 0.3,
       child: Opacity(
-        opacity: 0.8, // Slight transparency as requested
+        opacity: 0.8,
         child: Image.asset(
           'assets/images/logo2.png',
           width: 135,
@@ -200,9 +211,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         color: const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(
+          const BoxShadow(
             color: Colors.white,
-            offset: const Offset(-4, -4),
+            offset: Offset(-4, -4),
             blurRadius: 10,
           ),
           BoxShadow(
@@ -213,11 +224,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ],
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min, // Dynamic container height
+        mainAxisSize: MainAxisSize.min,
         children: [
           _buildDayHeaders(),
           const SizedBox(height: 12),
+          if (_isLoadingPosts)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: LinearProgressIndicator(
+                minHeight: 2,
+                color: Color(0xFF4D4D4D),
+                backgroundColor: Color(0xFFD8D8D8),
+              ),
+            ),
           _buildCalendarGrid(),
+          if (_loadError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                _loadError!,
+                style: GoogleFonts.lora(
+                  fontSize: 12,
+                  color: const Color(0xFF888888),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -225,18 +256,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildMonthNavigation() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40.0),
+      padding: const EdgeInsets.symmetric(horizontal: 40),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back_ios,
                 size: 16, color: Colors.black54),
-            onPressed: () {
-              setState(() {
-                _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1);
-              });
-            },
+            onPressed: () => _changeMonth(-1),
           ),
           Text(
             DateFormat('MMMM').format(_focusedDay),
@@ -249,11 +276,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           IconButton(
             icon: const Icon(Icons.arrow_forward_ios,
                 size: 16, color: Colors.black54),
-            onPressed: () {
-              setState(() {
-                _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1);
-              });
-            },
+            onPressed: () => _changeMonth(1),
           ),
         ],
       ),
@@ -261,23 +284,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildDayHeaders() {
-    final days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: days
-          .map((day) => SizedBox(
-                width: 30,
-                child: Center(
-                  child: Text(
-                    day,
-                    style: GoogleFonts.lora(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF9E9E9E),
-                    ),
+          .map(
+            (day) => SizedBox(
+              width: 30,
+              child: Center(
+                child: Text(
+                  day,
+                  style: GoogleFonts.lora(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF9E9E9E),
                   ),
                 ),
-              ))
+              ),
+            ),
+          )
           .toList(),
     );
   }
@@ -286,10 +311,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final daysInMonth =
         DateUtils.getDaysInMonth(_focusedDay.year, _focusedDay.month);
     final firstDayOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
-    final int weekdayOffset = firstDayOfMonth.weekday % 7;
-
-    // Calculate EXACT number of cells including offsets, no fixed 42
-    final int totalCells = daysInMonth + weekdayOffset;
+    final weekdayOffset = firstDayOfMonth.weekday % 7;
+    final totalCells = daysInMonth + weekdayOffset;
 
     return GridView.builder(
       shrinkWrap: true,
@@ -298,7 +321,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         crossAxisCount: 7,
         mainAxisSpacing: 8,
         crossAxisSpacing: 8,
-        childAspectRatio: 1.0,
+        childAspectRatio: 1,
       ),
       itemCount: totalCells,
       itemBuilder: (context, index) {
@@ -313,33 +336,203 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final isSelected = _selectedDay != null &&
             DateUtils.isSameDay(_selectedDay, currentDayDate);
         final isToday = DateUtils.isSameDay(DateTime.now(), currentDayDate);
+        final post = _postsByDate[currentDayDate];
 
         return GestureDetector(
           onTap: () {
             setState(() {
               _selectedDay = currentDayDate;
             });
+
+            if (post != null) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ResultScreen(post: post),
+                ),
+              );
+            }
           },
-          child: Container(
+          child: post == null
+              ? _buildDayNumberCell(
+                  day: day,
+                  isSelected: isSelected,
+                  isToday: isToday,
+                )
+              : _buildThumbnailCell(
+                  day: day,
+                  post: post,
+                  isSelected: isSelected,
+                  isToday: isToday,
+                ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDayNumberCell({
+    required int day,
+    required bool isSelected,
+    required bool isToday,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isSelected ? Colors.black87 : Colors.transparent,
+        shape: BoxShape.circle,
+        border: isToday && !isSelected
+            ? Border.all(color: Colors.black54, width: 1)
+            : null,
+      ),
+      child: Center(
+        child: Text(
+          '$day',
+          style: GoogleFonts.lora(
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? Colors.white : Colors.black54,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThumbnailCell({
+    required int day,
+    required FeedEntity post,
+    required bool isSelected,
+    required bool isToday,
+  }) {
+    final borderColor = isSelected
+        ? const Color(0xFF222222)
+        : isToday
+            ? const Color(0xFF5B5B5B)
+            : const Color(0xFFCBCBCB);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(color: const Color(0xFFD6D1C8)),
+          CachedNetworkImage(
+            imageUrl: post.url,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => _buildThumbnailPlaceholder(day),
+            errorWidget: (_, __, ___) => _buildThumbnailPlaceholder(day),
+          ),
+          Container(color: const Color(0xFF4F4332).withValues(alpha: 0.14)),
+          DecoratedBox(
             decoration: BoxDecoration(
-              color: isSelected ? Colors.black87 : Colors.transparent,
-              shape: BoxShape.circle,
-              border: isToday && !isSelected
-                  ? Border.all(color: Colors.black54, width: 1)
-                  : null,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor, width: isSelected ? 2 : 1),
             ),
-            child: Center(
+          ),
+          Align(
+            alignment: Alignment.bottomRight,
+            child: Container(
+              margin: const EdgeInsets.all(3),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.42),
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Text(
                 '$day',
                 style: GoogleFonts.lora(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? Colors.white : Colors.black54,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFFF2EEE8),
                 ),
               ),
             ),
           ),
-        );
-      },
+        ],
+      ),
     );
+  }
+
+  Widget _buildThumbnailPlaceholder(int day) {
+    return Container(
+      color: const Color(0xFFC5BEB2),
+      alignment: Alignment.center,
+      child: Text(
+        '$day',
+        style: GoogleFonts.lora(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFF625B51),
+        ),
+      ),
+    );
+  }
+
+  void _changeMonth(int delta) {
+    setState(() {
+      _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + delta, 1);
+    });
+    _loadPostsForFocusedMonth();
+  }
+
+  Future<void> _loadPostsForFocusedMonth() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _postsByDate = {};
+        _loadError = null;
+        _isLoadingPosts = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingPosts = true;
+      _loadError = null;
+    });
+
+    try {
+      final repository = ref.read(feedRepositoryProvider);
+      final startDate = DateTime(_focusedDay.year, _focusedDay.month, 1);
+      final endDate = DateTime(_focusedDay.year, _focusedDay.month + 1, 1);
+      final posts = await repository.getUserPostsByDateRange(
+        userId: userId,
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+      final mappedPosts = <DateTime, FeedEntity>{};
+      for (final post in posts) {
+        final dayKey = DateTime(
+          post.timestamp.year,
+          post.timestamp.month,
+          post.timestamp.day,
+        );
+        final existing = mappedPosts[dayKey];
+        if (existing == null || post.timestamp.isAfter(existing.timestamp)) {
+          mappedPosts[dayKey] = post;
+        }
+      }
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _postsByDate = mappedPosts;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _postsByDate = {};
+        _loadError = 'Could not load memories for this month.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingPosts = false;
+        });
+      }
+    }
   }
 }

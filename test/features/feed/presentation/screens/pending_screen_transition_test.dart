@@ -83,6 +83,14 @@ class _FakeFeedRepository implements FeedRepository {
   Stream<FeedEntity?> getLatestPostForUser(String userId) => latestPostStream;
 
   @override
+  Future<List<FeedEntity>> getUserPostsByDateRange({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async =>
+      const [];
+
+  @override
   Stream<FeedEntity?> getMyPendingPost(String userId) =>
       latestPostStream.map((post) => post?.status == 'PENDING' ? post : null);
 
@@ -91,4 +99,7 @@ class _FakeFeedRepository implements FeedRepository {
 
   @override
   Future<void> toggleLike(String postId, String userId, bool isLiked) async {}
+
+  @override
+  Future<void> updatePostCaption(String postId, String newCaption) async {}
 }

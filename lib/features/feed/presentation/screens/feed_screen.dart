@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../features/calendar/presentation/screens/calendar_screen.dart';
 import '../../../../features/likes/presentation/screens/like_screen.dart';
@@ -119,11 +120,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.notifications_outlined, color: Colors.black),
-          onPressed: () {},
+          onPressed: () => context.push('/notifications'),
         ),
         IconButton(
           icon: const Icon(Icons.settings_outlined, color: Colors.black),
-          onPressed: () {},
+          onPressed: () => context.push('/settings'),
         ),
         const SizedBox(width: 8),
       ],

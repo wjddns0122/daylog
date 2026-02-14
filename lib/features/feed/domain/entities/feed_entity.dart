@@ -41,13 +41,20 @@ class FeedEntity {
         data['authorId'] as String? ?? data['userId'] as String?;
     final String status = data['status'] as String? ?? 'RELEASED';
     final DateTime? releaseTime = (data['releaseTime'] as Timestamp?)?.toDate();
-    final String? aiCuration = data['aiCuration'] as String? ??
+    // Cloud Functions stores AI data in nested 'ai' map
+    final Map<String, dynamic>? aiData = data['ai'] as Map<String, dynamic>?;
+
+    final String? aiCuration = aiData?['curation'] as String? ??
+        data['curation'] as String? ??
+        data['aiCuration'] as String? ??
         data['aiCurationText'] as String? ??
         data['curationText'] as String? ??
         data['poeticText'] as String?;
-    final String? musicTitle =
-        data['musicTitle'] as String? ?? data['bgmTitle'] as String?;
-    final String? musicUrl = data['youtubeUrl'] as String? ??
+    final String? musicTitle = aiData?['youtubeTitle'] as String? ??
+        data['musicTitle'] as String? ??
+        data['bgmTitle'] as String?;
+    final String? musicUrl = aiData?['youtubeUrl'] as String? ??
+        data['youtubeUrl'] as String? ??
         data['musicUrl'] as String? ??
         data['bgmUrl'] as String?;
 

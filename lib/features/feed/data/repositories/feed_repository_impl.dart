@@ -50,6 +50,27 @@ class FeedRepositoryImpl implements FeedRepository {
   }
 
   @override
+  Future<List<FeedEntity>> getUserPostsByDateRange({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final querySnapshot = await _firestore
+        .collection('posts')
+        .where('authorId', isEqualTo: userId)
+        .where('status', isEqualTo: 'RELEASED')
+        .where('createdAt',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('createdAt', isLessThan: Timestamp.fromDate(endDate))
+        .orderBy('createdAt', descending: false)
+        .get();
+
+    return querySnapshot.docs
+        .map((doc) => FeedEntity.fromFirestore(doc))
+        .toList();
+  }
+
+  @override
   Stream<FeedEntity?> getMyPendingPost(String userId) {
     return _firestore
         .collection('posts')
@@ -92,5 +113,13 @@ class FeedRepositoryImpl implements FeedRepository {
         'likedBy': FieldValue.arrayUnion([userId]),
       });
     }
+  }
+
+  @override
+  Future<void> updatePostCaption(String postId, String newCaption) async {
+    await _firestore.collection('posts').doc(postId).update({
+      'caption': newCaption,
+      'content': newCaption,
+    });
   }
 }

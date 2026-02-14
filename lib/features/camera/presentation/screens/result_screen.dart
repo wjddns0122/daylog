@@ -1,4 +1,5 @@
 import 'package:daylog/features/feed/domain/entities/feed_entity.dart';
+import 'package:daylog/features/feed/presentation/providers/feed_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -15,6 +16,23 @@ class ResultScreen extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final launch = ref.read(resultScreenLaunchUrlProvider);
+    final initialCaption = useMemoized(
+      () => post.content.trim(),
+      [post.id, post.content],
+    );
+    final captionController = useTextEditingController(text: initialCaption);
+    final isSaving = useState(false);
+
+    useEffect(() {
+      captionController.value = TextEditingValue(
+        text: initialCaption,
+        selection: TextSelection.collapsed(offset: initialCaption.length),
+      );
+      return null;
+    }, [initialCaption]);
+
+    useListenable(captionController);
+    final hasCaptionChanged = captionController.text.trim() != initialCaption;
 
     final curationText = useMemoized(
       () => _resolveCurationText(post),
@@ -54,7 +72,7 @@ class ResultScreen extends HookConsumerWidget {
                 child: Column(
                   children: [
                     Text(
-                      'Complete',
+                      'Developed Memory',
                       style: const TextStyle(
                         fontFamily: 'Georgia',
                         fontSize: 32,
@@ -79,7 +97,7 @@ class ResultScreen extends HookConsumerWidget {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
+                      color: Colors.black.withValues(alpha: 0.15),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -94,23 +112,24 @@ class ResultScreen extends HookConsumerWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              Center(
-                child: Text(
-                  '추천 BGM : $musicTitle',
-                  style: const TextStyle(
-                    fontFamily: 'System',
-                    fontSize: 13,
-                    color: Color(0xFF666666),
-                  ),
+              const SizedBox(height: 14),
+              const Text(
+                'AI Curation',
+                style: TextStyle(
+                  fontFamily: 'Georgia',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2F2B25),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEBEBEB),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFD5D1C9)),
                 ),
                 child: Stack(
                   children: [
@@ -139,44 +158,6 @@ class ResultScreen extends HookConsumerWidget {
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 2, right: 8),
-                    child: Icon(
-                      Icons.edit_outlined,
-                      size: 20,
-                      color: Color(0xFF9E9E9E),
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 80,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFFE0E0E0)),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const TextField(
-                        maxLines: 2,
-                        decoration: InputDecoration.collapsed(
-                          hintText:
-                              '사진을 한문장으로 표현해주세요\n(ex) "오늘의 최고의 순간을 담은 사진 한장"',
-                          hintStyle: TextStyle(
-                            color: Color(0xFFBDBDBD),
-                            fontSize: 13,
-                            height: 1.4,
-                          ),
-                        ),
-                        style: TextStyle(fontSize: 13),
-                      ),
-                    ),
-                  ),
-                ],
               ),
               const SizedBox(height: 14),
               Container(
@@ -242,9 +223,77 @@ class ResultScreen extends HookConsumerWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
+              const Text(
+                'Your Caption',
+                style: TextStyle(
+                  fontFamily: 'Georgia',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2F2B25),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2, right: 8),
+                    child: Icon(
+                      Icons.edit_outlined,
+                      size: 20,
+                      color: Color(0xFF9E9E9E),
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      constraints: const BoxConstraints(minHeight: 92),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F2EC),
+                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextField(
+                        controller: captionController,
+                        enabled: !isSaving.value,
+                        maxLines: 3,
+                        minLines: 2,
+                        decoration: const InputDecoration.collapsed(
+                          hintText: '사진을 한 문장으로 표현해 주세요.',
+                          hintStyle: TextStyle(
+                            color: Color(0xFF9A9A9A),
+                            fontSize: 13,
+                            height: 1.5,
+                          ),
+                        ),
+                        style: const TextStyle(
+                          fontFamily: 'System',
+                          fontSize: 14,
+                          height: 1.45,
+                          color: Color(0xFF3D3D3D),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: () => _shareToInstagramStory(context, launch),
+                onPressed: isSaving.value
+                    ? null
+                    : () => _saveAndShare(
+                          context: context,
+                          ref: ref,
+                          launch: launch,
+                          postId: post.id,
+                          initialCaption: initialCaption,
+                          captionController: captionController,
+                          isSaving: isSaving,
+                        ),
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF37322A),
                   foregroundColor: Colors.white,
@@ -253,13 +302,24 @@ class ResultScreen extends HookConsumerWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                icon: const Icon(Icons.ios_share_rounded),
-                label: const Text(
-                  'Share to Instagram Stories',
-                  style: TextStyle(
+                icon: isSaving.value
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.ios_share_rounded),
+                label: Text(
+                  hasCaptionChanged
+                      ? 'Save / Share to Instagram Stories'
+                      : 'Share to Instagram Stories',
+                  style: const TextStyle(
                     fontFamily: 'Georgia',
                     fontWeight: FontWeight.w600,
-                    fontSize: 15,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -268,6 +328,48 @@ class ResultScreen extends HookConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _saveAndShare({
+    required BuildContext context,
+    required WidgetRef ref,
+    required Future<bool> Function(Uri) launch,
+    required String postId,
+    required String initialCaption,
+    required TextEditingController captionController,
+    required ValueNotifier<bool> isSaving,
+  }) async {
+    final updatedCaption = captionController.text.trim();
+
+    if (isSaving.value) {
+      return;
+    }
+
+    isSaving.value = true;
+    try {
+      if (updatedCaption != initialCaption) {
+        final repository = ref.read(feedRepositoryProvider);
+        await repository.updatePostCaption(postId, updatedCaption);
+      }
+
+      if (!context.mounted) {
+        return;
+      }
+
+      await _shareToInstagramStory(context, launch);
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save your caption right now.'),
+        ),
+      );
+    } finally {
+      isSaving.value = false;
+    }
   }
 
   Future<void> _openMusicLink(
