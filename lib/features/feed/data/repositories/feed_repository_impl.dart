@@ -13,6 +13,19 @@ class FeedRepositoryImpl implements FeedRepository {
     return _firestore
         .collection('posts')
         .where('status', isEqualTo: 'RELEASED')
+        .where('visibility', isEqualTo: 'PUBLIC')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => FeedEntity.fromFirestore(doc)).toList();
+    });
+  }
+
+  @override
+  Stream<List<FeedEntity>> getMyFeedStream(String userId) {
+    return _firestore
+        .collection('posts')
+        .where('authorId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -26,6 +39,7 @@ class FeedRepositoryImpl implements FeedRepository {
         .collection('posts')
         .where('likedBy', arrayContains: userId)
         .where('status', isEqualTo: 'RELEASED')
+        .where('visibility', isEqualTo: 'PUBLIC')
         .snapshots()
         .map((snapshot) {
       final list =

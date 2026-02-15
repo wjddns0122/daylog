@@ -2,6 +2,7 @@ import '../entities/feed_entity.dart';
 
 abstract class FeedRepository {
   Stream<List<FeedEntity>> getFeedStream();
+  Stream<List<FeedEntity>> getMyFeedStream(String userId);
   Stream<List<FeedEntity>> getLikedFeedStream(String userId);
   Stream<FeedEntity?> getLatestPostForUser(String userId);
   Future<List<FeedEntity>> getUserPostsByDateRange({

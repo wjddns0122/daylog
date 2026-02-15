@@ -37,8 +37,8 @@ class CameraNotifier extends StateNotifier<CameraState> {
   final AiService _aiService;
 
   CameraNotifier(this._repository)
-    : _aiService = AiService(),
-      super(CameraState());
+      : _aiService = AiService(),
+        super(CameraState());
 
   void setImage(String? path) {
     state = state.copyWith(imagePath: path);
@@ -61,12 +61,14 @@ class CameraNotifier extends StateNotifier<CameraState> {
     }
   }
 
-  Future<void> uploadCurrentPhoto(String content) async {
+  Future<void> uploadCurrentPhoto(String content,
+      {String visibility = 'PRIVATE'}) async {
     if (state.imagePath == null) return;
 
     state = state.copyWith(isLoading: true);
     try {
-      await _repository.uploadPhoto(File(state.imagePath!), content);
+      await _repository.uploadPhoto(
+          File(state.imagePath!), content, visibility);
     } finally {
       state = state.copyWith(isLoading: false);
     }

@@ -178,7 +178,7 @@ class _FakeCameraRepository implements CameraRepository {
   Future<String?> pickImage() async => imagePath;
 
   @override
-  Future<void> uploadPhoto(File file, String content) async {
+  Future<void> uploadPhoto(File file, String content, String visibility) async {
     await onUpload(content);
   }
 }
@@ -246,6 +246,10 @@ class _FakeFeedRepository implements FeedRepository {
 
   @override
   Stream<List<FeedEntity>> getFeedStream() => _feedController.stream;
+
+  @override
+  Stream<List<FeedEntity>> getMyFeedStream(String userId) =>
+      _feedController.stream;
 
   @override
   Stream<List<FeedEntity>> getLikedFeedStream(String userId) =>

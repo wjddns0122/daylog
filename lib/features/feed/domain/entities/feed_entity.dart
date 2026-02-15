@@ -8,6 +8,7 @@ class FeedEntity {
   final String? userId;
   final List<String> likedBy;
   final String status;
+  final String visibility;
   final DateTime? releaseTime;
   final String? aiCuration;
   final String? musicTitle;
@@ -21,6 +22,7 @@ class FeedEntity {
     this.userId,
     this.likedBy = const [],
     this.status = 'RELEASED',
+    this.visibility = 'PRIVATE',
     this.releaseTime,
     this.aiCuration,
     this.musicTitle,
@@ -40,6 +42,7 @@ class FeedEntity {
     final String? userId =
         data['authorId'] as String? ?? data['userId'] as String?;
     final String status = data['status'] as String? ?? 'RELEASED';
+    final String visibility = data['visibility'] as String? ?? 'PRIVATE';
     final DateTime? releaseTime = (data['releaseTime'] as Timestamp?)?.toDate();
     // Cloud Functions stores AI data in nested 'ai' map
     final Map<String, dynamic>? aiData = data['ai'] as Map<String, dynamic>?;
@@ -66,6 +69,7 @@ class FeedEntity {
       userId: userId,
       likedBy: List<String>.from(data['likedBy'] ?? []),
       status: status,
+      visibility: visibility,
       releaseTime: releaseTime,
       aiCuration: aiCuration,
       musicTitle: musicTitle,

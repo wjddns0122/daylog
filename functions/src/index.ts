@@ -59,16 +59,29 @@ export const createPostIntent = functions.https.onCall(
     }
 
     const uid = context.auth.uid;
-    const { imagePath, caption, requestId } = data as {
+    const { imagePath, caption, requestId, visibility } = data as {
       imagePath?: string;
       caption?: string;
       requestId?: string;
+      visibility?: string;
     };
 
-    if (!imagePath || !caption || !requestId) {
+    const normalizedVisibility =
+      typeof visibility === "string" ? visibility.toUpperCase() : "PRIVATE";
+
+    if (!imagePath || !requestId) {
       throw new functions.https.HttpsError(
         "invalid-argument",
-        "Missing required fields.",
+        "Missing required fields (imagePath, requestId).",
+      );
+    }
+
+    const safeCaption = caption ?? "";
+
+    if (!["PRIVATE", "PUBLIC"].includes(normalizedVisibility)) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Invalid visibility value.",
       );
     }
 
@@ -119,13 +132,15 @@ export const createPostIntent = functions.https.onCall(
         t.set(postRef, {
           authorId: uid,
           status: "PENDING",
+          visibility: normalizedVisibility,
           imageUrl: imagePath,
-          caption,
+          caption: safeCaption,
           releaseTime,
           createdAt: FieldValue.serverTimestamp(),
           dailyKey,
           version: 1,
           requestId,
+          likedBy: [],
         });
 
         shouldEnqueue = true;
@@ -148,6 +163,7 @@ export const createPostIntent = functions.https.onCall(
         data: {
           postId: targetPostId,
           status: "PENDING",
+          visibility: normalizedVisibility,
           releaseTime: targetReleaseTime.toDate().toISOString(),
         },
       };
@@ -267,17 +283,23 @@ const processPostDirect = async (postId: string): Promise<void> => {
   }
 };
 
-export const processPost = onTaskDispatched(async (request) => {
-  const payload = request.data as ProcessPostPayload | undefined;
-  const postId = payload?.postId;
+export const processPost = onTaskDispatched(
+  {
+    memory: "512MiB",
+    timeoutSeconds: 120,
+  },
+  async (request) => {
+    const payload = request.data as ProcessPostPayload | undefined;
+    const postId = payload?.postId;
 
-  if (typeof postId !== "string" || postId.trim().length === 0) {
-    console.error("processPost: invalid payload", payload);
-    return;
-  }
+    if (typeof postId !== "string" || postId.trim().length === 0) {
+      console.error("processPost: invalid payload", payload);
+      return;
+    }
 
-  await processPostDirect(postId);
-});
+    await processPostDirect(postId);
+  },
+);
 
 export const repairWorker = functions.https.onRequest(async (_req, res) => {
   const now = Timestamp.now();

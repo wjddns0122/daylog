@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "daylog-16724"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }

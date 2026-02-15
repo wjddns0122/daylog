@@ -76,6 +76,10 @@ class _FakeFeedRepository implements FeedRepository {
   Stream<List<FeedEntity>> getFeedStream() => Stream.value(const []);
 
   @override
+  Stream<List<FeedEntity>> getMyFeedStream(String userId) =>
+      Stream.value(const []);
+
+  @override
   Stream<List<FeedEntity>> getLikedFeedStream(String userId) =>
       Stream.value(const []);
 

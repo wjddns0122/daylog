@@ -113,22 +113,27 @@ class AuthRepository {
       // 1. Check if KakaoTalk is installed
       bool isInstalled = await kakao.isKakaoTalkInstalled();
 
-      // 2. Login
+      // 2. Login with Kakao
       isInstalled
           ? await kakao.UserApi.instance.loginWithKakaoTalk()
           : await kakao.UserApi.instance.loginWithKakaoAccount();
 
-      // 3. Get User Info
+      // 3. Get Kakao User Info
       final kakaoUser = await kakao.UserApi.instance.me();
 
-      // 4. Check if user exists in Firestore (using Kakao UID)
-      // Note: Since we don't have a backend to mint Custom Tokens for Firebase Auth,
-      // we will use the Kakao UID to manage the user in Firestore directly.
-      // This means current.currentUser will be null for Kakao users in this MVP.
-      // Ideally, we should use FirebaseAuth.signInAnonymously() to get a UID
-      // and link it, but for simplicity/correctness of data, we'll store by Kakao UID prefixed.
+      // 4. Sign in to Firebase Auth anonymously to get a valid auth token
+      //    This is needed for Cloud Functions calls (createPostIntent, etc.)
+      UserCredential firebaseCredential;
+      if (_auth.currentUser != null) {
+        // Already signed in to Firebase Auth, reuse existing session
+        firebaseCredential = await _auth.signInAnonymously();
+      } else {
+        firebaseCredential = await _auth.signInAnonymously();
+      }
+      final firebaseUser = firebaseCredential.user!;
+      final String uid = firebaseUser.uid;
 
-      final String uid = 'kakao_${kakaoUser.id}';
+      // 5. Store Kakao profile info in Firestore under Firebase Auth UID
       final docRef = _firestore.collection('users').doc(uid);
       final doc = await docRef.get();
 

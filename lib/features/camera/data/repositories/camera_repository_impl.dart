@@ -21,10 +21,30 @@ class CameraRepositoryImpl implements CameraRepository {
   }
 
   @override
-  Future<void> uploadPhoto(File file, String content) async {
+  Future<void> uploadPhoto(File file, String content, String visibility) async {
+    debugPrint('🔐 [Auth] currentUser before check: ${_auth.currentUser?.uid}');
+
     if (_auth.currentUser == null) {
-      await _auth.signInAnonymously();
+      debugPrint('🔐 [Auth] No Firebase user, signing in anonymously...');
+      try {
+        final cred = await _auth.signInAnonymously();
+        debugPrint('🔐 [Auth] Anonymous sign-in OK: uid=${cred.user?.uid}');
+      } catch (e) {
+        debugPrint('🔐 [Auth] Anonymous sign-in FAILED: $e');
+        rethrow;
+      }
+    } else {
+      debugPrint('🔐 [Auth] User exists, refreshing token...');
+      try {
+        final token = await _auth.currentUser!.getIdToken(true);
+        debugPrint('🔐 [Auth] Token refreshed OK (length=${token?.length})');
+      } catch (e) {
+        debugPrint('🔐 [Auth] Token refresh FAILED: $e');
+      }
     }
+
+    debugPrint('🔐 [Auth] Final currentUser: ${_auth.currentUser?.uid}');
+    debugPrint('🔐 [Auth] isAnonymous: ${_auth.currentUser?.isAnonymous}');
 
     final String uuid = _uuid.v4();
     final Reference ref = _storage.ref().child('shots/$uuid.jpg');
@@ -40,6 +60,7 @@ class CameraRepositoryImpl implements CameraRepository {
       debugPrint('   - imagePath (downloadUrl): $downloadUrl');
       debugPrint('   - caption: $content');
       debugPrint('   - requestId: $uuid');
+      debugPrint('   - visibility: $visibility');
 
       if (content.isEmpty) {
         debugPrint(
@@ -50,6 +71,7 @@ class CameraRepositoryImpl implements CameraRepository {
         'imagePath': downloadUrl,
         'caption': content,
         'requestId': uuid,
+        'visibility': visibility,
       });
     } catch (e) {
       rethrow;

@@ -38,6 +38,16 @@ final feedProvider = StreamNotifierProvider<FeedNotifier, List<FeedEntity>>(
   FeedNotifier.new,
 );
 
+final myDiaryFeedProvider = StreamProvider.autoDispose<List<FeedEntity>>((ref) {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) {
+    return Stream.value(const []);
+  }
+
+  final repository = ref.watch(feedRepositoryProvider);
+  return repository.getMyFeedStream(userId);
+});
+
 final currentUserIdProvider = Provider<String?>((ref) {
   return FirebaseAuth.instance.currentUser?.uid;
 });

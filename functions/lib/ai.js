@@ -8,7 +8,7 @@ const DEFAULT_CURATION = "A quiet moment, held gently in time.";
 const DEFAULT_MUSIC_QUERY = "calm ambient instrumental";
 const DEFAULT_YOUTUBE_URL = "https://www.youtube.com/watch?v=5qap5aO4i9A";
 const DEFAULT_YOUTUBE_TITLE = "lofi hip hop radio - beats to relax/study to";
-const AI_BYPASS = process.env.AI_BYPASS === "false";
+const AI_BYPASS = process.env.AI_BYPASS === "true";
 const CURATION_PROMPT = [
     "You are an assistant for emotional curation from photos.",
     "Analyze the image and return only JSON.",
@@ -56,7 +56,7 @@ const analyzeWithVertex = async (imageBase64, mimeType) => {
     }
     try {
         const vertexAI = new vertexai_1.VertexAI({ project, location });
-        const model = vertexAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+        const model = vertexAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         const result = await model.generateContent({
             contents: [
                 {
@@ -91,7 +91,7 @@ const analyzeWithGeminiApiKey = async (imageBase64, mimeType) => {
         return null;
     }
     try {
-        const response = await axios_1.default.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent", {
+        const response = await axios_1.default.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", {
             contents: [
                 {
                     role: "user",

@@ -36,9 +36,14 @@ exports.createPostIntent = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
     }
     const uid = context.auth.uid;
-    const { imagePath, caption, requestId } = data;
-    if (!imagePath || !caption || !requestId) {
-        throw new functions.https.HttpsError("invalid-argument", "Missing required fields.");
+    const { imagePath, caption, requestId, visibility } = data;
+    const normalizedVisibility = typeof visibility === "string" ? visibility.toUpperCase() : "PRIVATE";
+    if (!imagePath || !requestId) {
+        throw new functions.https.HttpsError("invalid-argument", "Missing required fields (imagePath, requestId).");
+    }
+    const safeCaption = caption !== null && caption !== void 0 ? caption : "";
+    if (!["PRIVATE", "PUBLIC"].includes(normalizedVisibility)) {
+        throw new functions.https.HttpsError("invalid-argument", "Invalid visibility value.");
     }
     const today = new Date().toISOString().split("T")[0];
     const dailyKey = `${uid}_${today}`;
@@ -71,13 +76,15 @@ exports.createPostIntent = functions.https.onCall(async (data, context) => {
             t.set(postRef, {
                 authorId: uid,
                 status: "PENDING",
+                visibility: normalizedVisibility,
                 imageUrl: imagePath,
-                caption,
+                caption: safeCaption,
                 releaseTime,
                 createdAt: firestore_1.FieldValue.serverTimestamp(),
                 dailyKey,
                 version: 1,
                 requestId,
+                likedBy: [],
             });
             shouldEnqueue = true;
         });
@@ -95,6 +102,7 @@ exports.createPostIntent = functions.https.onCall(async (data, context) => {
             data: {
                 postId: targetPostId,
                 status: "PENDING",
+                visibility: normalizedVisibility,
                 releaseTime: targetReleaseTime.toDate().toISOString(),
             },
         };
@@ -190,7 +198,10 @@ const processPostDirect = async (postId) => {
         throw error;
     }
 };
-exports.processPost = (0, tasks_1.onTaskDispatched)(async (request) => {
+exports.processPost = (0, tasks_1.onTaskDispatched)({
+    memory: "512MiB",
+    timeoutSeconds: 120,
+}, async (request) => {
     const payload = request.data;
     const postId = payload === null || payload === void 0 ? void 0 : payload.postId;
     if (typeof postId !== "string" || postId.trim().length === 0) {

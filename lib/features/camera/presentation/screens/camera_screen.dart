@@ -87,9 +87,10 @@ class CameraScreen extends HookConsumerWidget {
       initializeCamera();
 
       return () {
-        final controller = cameraController.value;
-        cameraController.value = null;
-        controller?.dispose();
+        // Don't set cameraController.value = null here.
+        // The widget is already unmounted, so updating the ValueNotifier
+        // would trigger markNeedsBuild on a defunct Element.
+        cameraController.value?.dispose();
       };
     }, [lensDirection.value]);
 

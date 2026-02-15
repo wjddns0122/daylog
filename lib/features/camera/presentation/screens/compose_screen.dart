@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -18,6 +19,7 @@ class ComposeScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final captionController = useTextEditingController();
     final isUploading = useState(false);
+    final isPublic = useState(false);
 
     final imageAspectRatioFuture = useMemoized(
       () => _resolveImageAspectRatio(imageFile),
@@ -32,16 +34,20 @@ class ComposeScreen extends HookConsumerWidget {
 
       isUploading.value = true;
       try {
-        await ref
-            .read(cameraRepositoryProvider)
-            .uploadPhoto(imageFile, captionController.text.trim());
+        await ref.read(cameraRepositoryProvider).uploadPhoto(
+              imageFile,
+              captionController.text.trim(),
+              isPublic.value ? 'PUBLIC' : 'PRIVATE',
+            );
 
         if (!context.mounted) {
           return;
         }
 
         context.go('/pending');
-      } catch (_) {
+      } catch (e, stack) {
+        debugPrint('❌ [Upload] Error: $e');
+        debugPrint('❌ [Upload] Stack: $stack');
         if (!context.mounted) {
           return;
         }
@@ -150,6 +156,41 @@ class ComposeScreen extends HookConsumerWidget {
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
                   ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: SwitchListTile.adaptive(
+                  value: isPublic.value,
+                  onChanged: isUploading.value
+                      ? null
+                      : (value) {
+                          isPublic.value = value;
+                        },
+                  title: Text(
+                    '커뮤니티에 공개하기',
+                    style: GoogleFonts.lora(
+                      color: const Color(0xFF3D3D3D),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    isPublic.value
+                        ? '다른 사용자도 이 게시물을 볼 수 있습니다.'
+                        : '나만 볼 수 있는 비공개 게시물로 저장됩니다.',
+                    style: GoogleFonts.lora(
+                      color: const Color(0xFF777777),
+                      fontSize: 13,
+                    ),
+                  ),
+                  activeColor: const Color(0xFF333333),
                 ),
               ),
             ),

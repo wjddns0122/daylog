@@ -2,14 +2,37 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /posts/{postId} {
-      // TODO: Restore proper auth check after implementing Firebase Custom Tokens for Kakao
-      allow read: if true;
+      function isValidVisibility(value) {
+        return value == 'PRIVATE' || value == 'PUBLIC';
+      }
 
-      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      function isOwner() {
+        return request.auth != null && resource.data.authorId == request.auth.uid;
+      }
 
+      function isPublicReleased() {
+        return resource.data.status == 'RELEASED' && resource.data.visibility == 'PUBLIC';
+      }
+
+      allow read: if isPublicReleased() || isOwner();
+
+      allow create: if request.auth != null &&
+                    request.resource.data.authorId == request.auth.uid &&
+                    isValidVisibility(request.resource.data.visibility);
+
+      // Author can update their own post (except protected fields)
       allow update: if request.auth != null &&
                     resource.data.authorId == request.auth.uid &&
+                    isValidVisibility(request.resource.data.visibility) &&
                     !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'releaseTime', 'dailyKey', 'authorId', 'version']);
+
+      // Any authenticated user can toggle likes (only likedBy field)
+      allow update: if request.auth != null &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy']);
+
+      // Author can delete their own post
+      allow delete: if request.auth != null &&
+                    resource.data.authorId == request.auth.uid;
     }
 
     match /daily_locks/{lockId} {
