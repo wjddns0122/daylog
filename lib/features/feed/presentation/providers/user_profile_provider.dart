@@ -39,3 +39,37 @@ final userProfileProvider =
 
   return null;
 });
+
+/// Live user profile stream (for reactive follower/following count updates).
+final userProfileStreamProvider =
+    StreamProvider.family<UserModel?, String>((ref, uid) {
+  if (uid.isEmpty) {
+    return Stream.value(null);
+  }
+
+  return FirebaseFirestore.instance
+      .collection('users')
+      .doc(uid)
+      .snapshots()
+      .map(
+    (doc) {
+      if (doc.exists) {
+        return UserModel.fromDocument(doc);
+      }
+
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null && currentUser.uid == uid) {
+        return UserModel(
+          uid: currentUser.uid,
+          email: currentUser.email ?? '',
+          displayName: currentUser.displayName ?? '',
+          nickname: currentUser.displayName,
+          photoUrl: currentUser.photoURL,
+          isVerified: currentUser.emailVerified,
+        );
+      }
+
+      return null;
+    },
+  );
+});

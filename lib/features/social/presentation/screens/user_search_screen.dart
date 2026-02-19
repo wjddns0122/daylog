@@ -35,7 +35,6 @@ class _UserSearchScreenState extends ConsumerState<UserSearchScreen> {
   }
 
   Future<void> _toggleFollow({
-    required BuildContext context,
     required String targetUserId,
     required RelationshipState currentState,
   }) async {
@@ -60,11 +59,10 @@ class _UserSearchScreenState extends ConsumerState<UserSearchScreen> {
         await repository.sendFollowRequest(targetUserId);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('처리 중 오류가 발생했어요: $e')),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('처리 중 오류가 발생했어요: $e')),
+      );
       setState(() {
         _optimisticStates[targetUserId] = currentState;
       });
@@ -149,7 +147,6 @@ class _UserSearchScreenState extends ConsumerState<UserSearchScreen> {
                                 state: resolvedState,
                                 isBusy: isBusy,
                                 onPressed: () => _toggleFollow(
-                                  context: context,
                                   targetUserId: user.uid,
                                   currentState: resolvedState,
                                 ),

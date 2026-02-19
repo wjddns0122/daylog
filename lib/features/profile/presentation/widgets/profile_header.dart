@@ -10,10 +10,11 @@ class ProfileHeader extends StatelessWidget {
   final int followerCount;
   final int followingCount;
   final String? avatarUrl;
-  final VoidCallback? onEditProfile;
+  final VoidCallback? onActionButtonPressed;
   final VoidCallback? onTapFollowers;
   final VoidCallback? onTapFollowing;
-  final bool showEditProfileButton;
+  final String? actionButtonLabel;
+  final bool isActionButtonLoading;
 
   const ProfileHeader({
     super.key,
@@ -24,10 +25,11 @@ class ProfileHeader extends StatelessWidget {
     required this.followerCount,
     required this.followingCount,
     this.avatarUrl,
-    this.onEditProfile,
+    this.onActionButtonPressed,
     this.onTapFollowers,
     this.onTapFollowing,
-    this.showEditProfileButton = true,
+    this.actionButtonLabel,
+    this.isActionButtonLoading = false,
   });
 
   @override
@@ -128,13 +130,13 @@ class ProfileHeader extends StatelessWidget {
             ],
           ),
 
-          if (showEditProfileButton) ...[
+          if (actionButtonLabel != null) ...[
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 36,
               child: OutlinedButton(
-                onPressed: onEditProfile,
+                onPressed: isActionButtonLoading ? null : onActionButtonPressed,
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(
                       color: AppTheme.primaryColor.withValues(alpha: 0.2)),
@@ -143,9 +145,19 @@ class ProfileHeader extends StatelessWidget {
                   foregroundColor: AppTheme.primaryColor,
                   padding: EdgeInsets.zero,
                 ),
-                child: const Text('프로필 편집',
-                    style:
-                        TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                child: isActionButtonLoading
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        actionButtonLabel!,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],

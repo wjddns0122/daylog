@@ -1,30 +1,88 @@
 import 'package:daylog/core/theme/app_theme.dart';
 import 'package:daylog/features/feed/presentation/providers/user_profile_provider.dart';
 import 'package:daylog/features/auth/presentation/viewmodels/auth_view_model.dart';
-import 'package:daylog/features/auth/domain/models/user_model.dart';
 import 'package:daylog/features/profile/presentation/viewmodels/profile_view_model.dart';
 import 'package:daylog/features/profile/presentation/widgets/profile_header.dart';
+import 'package:daylog/features/social/domain/repositories/social_repository.dart';
+import 'package:daylog/features/social/presentation/providers/social_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:intl/intl.dart';
 
-class ProfileScreen extends HookConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key, this.userId});
 
   final String? userId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  RelationshipState? _optimisticRelationship;
+  bool _isFollowActionInFlight = false;
+
+  Future<void> _toggleFollow(
+      String targetUserId, RelationshipState state) async {
+    if (_isFollowActionInFlight) {
+      return;
+    }
+
+    final nextState = state == RelationshipState.following
+        ? RelationshipState.none
+        : RelationshipState.following;
+
+    setState(() {
+      _isFollowActionInFlight = true;
+      _optimisticRelationship = nextState;
+    });
+
+    try {
+      final repository = ref.read(socialRepositoryProvider);
+      if (state == RelationshipState.following) {
+        await repository.unfollow(targetUserId);
+      } else {
+        await repository.sendFollowRequest(targetUserId);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('팔로잉 처리 중 오류가 발생했어요: $e')),
+        );
+      }
+      setState(() {
+        _optimisticRelationship = state;
+      });
+    } finally {
+      ref.invalidate(relationshipProvider(targetUserId));
+      if (mounted) {
+        setState(() {
+          _isFollowActionInFlight = false;
+          _optimisticRelationship = null;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authViewModelProvider);
     final authUser = authState.valueOrNull;
-    final viewedUserAsync = userId == null
-        ? const AsyncValue<UserModel?>.data(null)
-        : ref.watch(userProfileProvider(userId!));
-    final viewedUser = viewedUserAsync.valueOrNull;
-
-    final isOwnProfile = userId == null || userId == authUser?.uid;
-    final user = isOwnProfile ? authUser : viewedUser;
+    final isOwnProfile =
+        widget.userId == null || widget.userId == authUser?.uid;
+    final targetUid = isOwnProfile ? authUser?.uid : widget.userId;
+    final profileUserAsync = targetUid == null
+        ? const AsyncValue.data(null)
+        : ref.watch(userProfileStreamProvider(targetUid));
+    final user =
+        profileUserAsync.valueOrNull ?? (isOwnProfile ? authUser : null);
+    final relationAsync = !isOwnProfile && user != null
+        ? ref.watch(relationshipProvider(user.uid))
+        : const AsyncValue<RelationshipState>.data(RelationshipState.none);
+    final relationship = _optimisticRelationship ??
+        relationAsync.valueOrNull ??
+        RelationshipState.none;
 
     final profileState = user != null
         ? ref.watch(profileViewModelProvider(user.uid))
@@ -73,7 +131,7 @@ class ProfileScreen extends HookConsumerWidget {
                 ),
             ],
           ),
-          if (user == null || viewedUserAsync.isLoading)
+          if (user == null || profileUserAsync.isLoading)
             const SliverFillRemaining(
               child: Center(child: CircularProgressIndicator()),
             )
@@ -94,14 +152,19 @@ class ProfileScreen extends HookConsumerWidget {
                 onTapFollowing: isOwnProfile
                     ? () => context.push('/profile/following')
                     : null,
-                showEditProfileButton: isOwnProfile,
-                onEditProfile: isOwnProfile
+                actionButtonLabel: isOwnProfile
+                    ? '프로필 편집'
+                    : (relationship == RelationshipState.following
+                        ? '언팔로잉'
+                        : '팔로잉'),
+                isActionButtonLoading: !isOwnProfile && _isFollowActionInFlight,
+                onActionButtonPressed: isOwnProfile
                     ? () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('프로필 편집 기능 준비 중입니다.')),
                         );
                       }
-                    : null,
+                    : () => _toggleFollow(user.uid, relationship),
               ),
             ),
 
