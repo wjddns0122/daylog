@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +10,114 @@ import '../../domain/entities/feed_entity.dart';
 import '../providers/feed_provider.dart';
 import '../providers/user_profile_provider.dart';
 import 'comments_sheet.dart';
+
+void showLikesSheet(BuildContext context, List<String> userIds) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _LikesSheet(userIds: userIds),
+  );
+}
+
+class _LikesSheet extends ConsumerWidget {
+  const _LikesSheet({required this.userIds});
+
+  final List<String> userIds;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.65,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 10, bottom: 6),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Text(
+              '좋아요',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+          Expanded(
+            child: userIds.isEmpty
+                ? const Center(
+                    child: Text(
+                      '아직 좋아요가 없어요.',
+                      style: TextStyle(fontSize: 14, color: Color(0xFF999999)),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: userIds.length,
+                    itemBuilder: (context, index) {
+                      final uid = userIds[index];
+                      final userAsync = ref.watch(userProfileProvider(uid));
+
+                      return ListTile(
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          context.push('/users/$uid');
+                        },
+                        leading: userAsync.when(
+                          data: (user) {
+                            if (user?.photoUrl != null &&
+                                user!.photoUrl!.isNotEmpty) {
+                              return CircleAvatar(
+                                backgroundImage: NetworkImage(user.photoUrl!),
+                              );
+                            }
+                            return const CircleAvatar(
+                              child: Icon(Icons.person),
+                            );
+                          },
+                          loading: () => const CircleAvatar(
+                            child: SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                          error: (_, __) => const CircleAvatar(
+                            child: Icon(Icons.person),
+                          ),
+                        ),
+                        title: Text(
+                          userAsync.valueOrNull?.nickname ??
+                              userAsync.valueOrNull?.displayName ??
+                              '사용자',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          '@${userAsync.valueOrNull?.nickname ?? uid}',
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class FeedCard extends ConsumerWidget {
   final FeedEntity item;
@@ -55,7 +164,7 @@ class FeedCard extends ConsumerWidget {
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
                     if (item.userId != null) {
-                      context.push('/profile');
+                      context.push('/users/${item.userId}');
                     }
                   },
                   child: Row(
@@ -219,11 +328,14 @@ class FeedCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '좋아요 ${item.likedBy.length}개',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                GestureDetector(
+                  onTap: () => showLikesSheet(context, item.likedBy),
+                  child: Text(
+                    '좋아요 ${item.likedBy.length}개',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
                 if (item.content.isNotEmpty) ...[
@@ -245,6 +357,12 @@ class FeedCard extends ConsumerWidget {
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
                           ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              if (item.userId != null) {
+                                context.push('/users/${item.userId}');
+                              }
+                            },
                         ),
                         const TextSpan(text: '  '),
                         TextSpan(text: item.content),

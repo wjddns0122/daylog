@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../domain/entities/comment_entity.dart';
@@ -241,29 +242,36 @@ class _CommentTile extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Avatar
-          userAsync.when(
-            data: (user) {
-              if (user?.photoUrl != null && user!.photoUrl!.isNotEmpty) {
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).pop();
+              context.push('/users/${comment.userId}');
+            },
+            child: userAsync.when(
+              data: (user) {
+                if (user?.photoUrl != null && user!.photoUrl!.isNotEmpty) {
+                  return CircleAvatar(
+                    radius: 16,
+                    backgroundImage: NetworkImage(user.photoUrl!),
+                    backgroundColor: Colors.grey[200],
+                  );
+                }
                 return CircleAvatar(
                   radius: 16,
-                  backgroundImage: NetworkImage(user.photoUrl!),
-                  backgroundColor: Colors.grey[200],
+                  backgroundColor: Colors.grey[300],
+                  child:
+                      const Icon(Icons.person, size: 16, color: Colors.white),
                 );
-              }
-              return CircleAvatar(
+              },
+              loading: () => CircleAvatar(
+                radius: 16,
+                backgroundColor: Colors.grey[200],
+              ),
+              error: (_, __) => CircleAvatar(
                 radius: 16,
                 backgroundColor: Colors.grey[300],
                 child: const Icon(Icons.person, size: 16, color: Colors.white),
-              );
-            },
-            loading: () => CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.grey[200],
-            ),
-            error: (_, __) => CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.grey[300],
-              child: const Icon(Icons.person, size: 16, color: Colors.white),
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -273,25 +281,31 @@ class _CommentTile extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    userAsync.when(
-                      data: (user) => Text(
-                        user?.nickname ?? user?.displayName ?? '사용자',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                          color: Colors.black,
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        context.push('/users/${comment.userId}');
+                      },
+                      child: userAsync.when(
+                        data: (user) => Text(
+                          user?.nickname ?? user?.displayName ?? '사용자',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: Colors.black,
+                          ),
                         ),
-                      ),
-                      loading: () => Container(
-                        width: 50,
-                        height: 12,
-                        color: Colors.grey[200],
-                      ),
-                      error: (_, __) => const Text(
-                        '사용자',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                        loading: () => Container(
+                          width: 50,
+                          height: 12,
+                          color: Colors.grey[200],
+                        ),
+                        error: (_, __) => const Text(
+                          '사용자',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ),
