@@ -30,18 +30,36 @@ class AuthRepositoryImpl implements AuthRepository {
   Stream<UserModel?> get authStateChanges {
     return _firebaseAuth.authStateChanges().asyncMap((user) async {
       if (user == null) return null;
-      // Fetch details from Firestore to get nickname/etc if needed,
-      // or just return basic info. For now, returning User from Firestore preferred.
+
       final doc = await _firestore.collection('users').doc(user.uid).get();
       if (doc.exists) {
         return UserModel.fromDocument(doc);
       }
-      return UserModel(
+
+      // Auto-create user doc if missing (emulator or legacy accounts)
+      final fallbackName =
+          user.displayName ?? user.email?.split('@').first ?? '';
+      final newUser = UserModel(
         uid: user.uid,
         email: user.email ?? '',
+        displayName: fallbackName,
         photoUrl: user.photoURL,
-        nickname: user.displayName,
+        nickname: fallbackName,
+        isVerified: user.emailVerified,
+        createdAt: DateTime.now(),
       );
+
+      try {
+        await _firestore.collection('users').doc(user.uid).set({
+          ...newUser.toJson(),
+          'loginMethod': 'unknown',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {
+        // If Firestore write fails (e.g. rules), still return the model
+      }
+
+      return newUser;
     });
   }
 
@@ -63,13 +81,25 @@ class AuthRepositoryImpl implements AuthRepository {
       if (doc.exists) {
         return UserModel.fromDocument(doc);
       }
-      // Fallback if user exists in Auth but not Firestore (edge case)
-      return UserModel(
+
+      // Auto-create user doc if missing (emulator or legacy accounts)
+      final newUser = UserModel(
         uid: user.uid,
         email: user.email ?? '',
-        nickname: user.displayName,
+        displayName: user.displayName ?? email.split('@').first,
+        nickname: user.displayName ?? email.split('@').first,
         photoUrl: user.photoURL,
+        isVerified: user.emailVerified,
+        createdAt: DateTime.now(),
       );
+
+      await _firestore.collection('users').doc(user.uid).set({
+        ...newUser.toJson(),
+        'loginMethod': 'email',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      return newUser;
     } catch (e) {
       rethrow;
     }
@@ -94,8 +124,10 @@ class AuthRepositoryImpl implements AuthRepository {
       final newUser = UserModel(
         uid: user.uid,
         email: email,
+        displayName: name,
         nickname: nickname,
-        photoUrl: null, // Default null for email signup
+        photoUrl: null,
+        isVerified: false,
         createdAt: DateTime.now(),
       );
 
@@ -206,8 +238,10 @@ class AuthRepositoryImpl implements AuthRepository {
       final newUser = UserModel(
         uid: uid,
         email: email,
+        displayName: nickname ?? 'User',
         nickname: nickname,
         photoUrl: photoUrl,
+        isVerified: true,
         createdAt: DateTime.now(),
       );
       await userRef.set({

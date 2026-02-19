@@ -9,8 +9,12 @@ class UserModel with _$UserModel {
   const factory UserModel({
     required String uid,
     required String email,
+    required String displayName,
+    @Default(false) bool isVerified,
     String? nickname,
     String? photoUrl,
+    @Default(0) int followersCount,
+    @Default(0) int followingCount,
     @TimestampConverter() DateTime? createdAt,
   }) = _UserModel;
 
@@ -20,6 +24,18 @@ class UserModel with _$UserModel {
   factory UserModel.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return UserModel.fromJson({'uid': doc.id, ...data});
+  }
+
+  factory UserModel.fromFirebaseUser(var user, {String? nickname}) {
+    return UserModel(
+      uid: user.uid,
+      email: user.email ?? '',
+      displayName: user.displayName ?? '',
+      isVerified: user.emailVerified,
+      nickname: nickname ?? user.displayName,
+      photoUrl: user.photoURL,
+      createdAt: user.metadata.creationTime,
+    );
   }
 }
 

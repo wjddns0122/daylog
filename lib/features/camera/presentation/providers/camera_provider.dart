@@ -62,13 +62,14 @@ class CameraNotifier extends StateNotifier<CameraState> {
   }
 
   Future<void> uploadCurrentPhoto(String content,
-      {String visibility = 'PRIVATE'}) async {
+      {String visibility = 'PRIVATE',
+      List<String> moodKeywords = const []}) async {
     if (state.imagePath == null) return;
 
     state = state.copyWith(isLoading: true);
     try {
       await _repository.uploadPhoto(
-          File(state.imagePath!), content, visibility);
+          File(state.imagePath!), content, visibility, moodKeywords);
     } finally {
       state = state.copyWith(isLoading: false);
     }

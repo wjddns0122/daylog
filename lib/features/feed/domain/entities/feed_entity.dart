@@ -13,6 +13,10 @@ class FeedEntity {
   final String? aiCuration;
   final String? musicTitle;
   final String? musicUrl;
+  final List<String>? moodKeywords;
+  final String? songTitle;
+  final String? musicReason;
+  final int commentCount;
 
   FeedEntity({
     required this.id,
@@ -27,6 +31,10 @@ class FeedEntity {
     this.aiCuration,
     this.musicTitle,
     this.musicUrl,
+    this.moodKeywords,
+    this.songTitle,
+    this.musicReason,
+    this.commentCount = 0,
   });
 
   factory FeedEntity.fromFirestore(DocumentSnapshot doc) {
@@ -61,6 +69,13 @@ class FeedEntity {
         data['musicUrl'] as String? ??
         data['bgmUrl'] as String?;
 
+    final List<String>? moodKeywords =
+        (data['moodKeywords'] as List<dynamic>?)?.cast<String>();
+    final String? songTitle =
+        aiData?['songTitle'] as String? ?? data['songTitle'] as String?;
+    final String? musicReason =
+        aiData?['musicReason'] as String? ?? data['musicReason'] as String?;
+
     return FeedEntity(
       id: doc.id,
       url: url,
@@ -74,6 +89,10 @@ class FeedEntity {
       aiCuration: aiCuration,
       musicTitle: musicTitle,
       musicUrl: musicUrl,
+      moodKeywords: moodKeywords,
+      songTitle: songTitle,
+      musicReason: musicReason,
+      commentCount: (data['commentCount'] as int?) ?? 0,
     );
   }
 

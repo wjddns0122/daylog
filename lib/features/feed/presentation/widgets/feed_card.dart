@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/feed_entity.dart';
 import '../providers/feed_provider.dart';
+import '../providers/user_profile_provider.dart';
+import 'comments_sheet.dart';
 
 class FeedCard extends ConsumerWidget {
   final FeedEntity item;
@@ -22,6 +24,11 @@ class FeedCard extends ConsumerWidget {
       user = null;
     }
     final isLiked = user != null && item.isLiked(user.uid);
+
+    // Fetch the post author's profile
+    final authorAsync = ref.watch(
+      userProfileProvider(item.userId ?? ''),
+    );
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -39,36 +46,84 @@ class FeedCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // Header — real user info
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
               children: [
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => context.push('/profile'),
+                  onTap: () {
+                    if (item.userId != null) {
+                      context.push('/profile');
+                    }
+                  },
                   child: Row(
                     children: [
-                      const CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Colors.grey,
-                        child: Icon(Icons.person, color: Colors.white),
+                      // Avatar from Firestore user profile
+                      authorAsync.when(
+                        data: (authorUser) {
+                          if (authorUser?.photoUrl != null &&
+                              authorUser!.photoUrl!.isNotEmpty) {
+                            return CircleAvatar(
+                              radius: 18,
+                              backgroundImage:
+                                  NetworkImage(authorUser.photoUrl!),
+                              backgroundColor: Colors.grey[200],
+                            );
+                          }
+                          return const CircleAvatar(
+                            radius: 18,
+                            backgroundColor: Colors.grey,
+                            child: Icon(Icons.person, color: Colors.white),
+                          );
+                        },
+                        loading: () => CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Colors.grey[200],
+                        ),
+                        error: (_, __) => const CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Colors.grey,
+                          child: Icon(Icons.person, color: Colors.white),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            '@Day_log1234',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.black,
+                          // Real username
+                          authorAsync.when(
+                            data: (authorUser) => Text(
+                              authorUser?.nickname ??
+                                  authorUser?.displayName ??
+                                  '사용자',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.black,
+                              ),
+                            ),
+                            loading: () => Container(
+                              width: 80,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            error: (_, __) => const Text(
+                              '사용자',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            DateFormat.yMMMd().format(item.timestamp),
+                            _formatDate(item.timestamp),
                             style: const TextStyle(
                               fontSize: 12,
                               color: AppTheme.textSecondary,
@@ -92,7 +147,7 @@ class FeedCard extends ConsumerWidget {
                       const PopupMenuItem(
                         value: 'delete',
                         child: Text(
-                          'Delete Post',
+                          '삭제하기',
                           style: TextStyle(color: Colors.red),
                         ),
                       ),
@@ -128,7 +183,7 @@ class FeedCard extends ConsumerWidget {
             ),
           ),
 
-          // Action Row
+          // Action Row — like + comment (no bookmark)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Row(
@@ -146,24 +201,11 @@ class FeedCard extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                IconButton(
-                  tooltip: 'Comments (coming soon)',
-                  onPressed: () =>
-                      _showFeatureNotice(context, 'Comments are coming soon.'),
-                  icon: const Icon(
+                GestureDetector(
+                  onTap: () => showCommentsSheet(context, item.id),
+                  child: const Icon(
                     Icons.chat_bubble_outline,
                     size: 26,
-                    color: Colors.black87,
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  tooltip: 'Bookmark (coming soon)',
-                  onPressed: () =>
-                      _showFeatureNotice(context, 'Bookmarks are coming soon.'),
-                  icon: const Icon(
-                    Icons.bookmark_border,
-                    size: 28,
                     color: Colors.black87,
                   ),
                 ),
@@ -171,14 +213,14 @@ class FeedCard extends ConsumerWidget {
             ),
           ),
 
-          // Likes & Caption
+          // Likes & commentCount & Caption
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${item.likedBy.length} likes',
+                  '좋아요 ${item.likedBy.length}개',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -186,12 +228,40 @@ class FeedCard extends ConsumerWidget {
                 ),
                 if (item.content.isNotEmpty) ...[
                   const SizedBox(height: 6),
-                  Text(
-                    item.content,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.black87,
-                      height: 1.4,
+                  RichText(
+                    text: TextSpan(
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black87,
+                        height: 1.4,
+                      ),
+                      children: [
+                        // Author name bold
+                        TextSpan(
+                          text: authorAsync.whenOrNull(
+                                data: (u) => u?.nickname ?? u?.displayName,
+                              ) ??
+                              '',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const TextSpan(text: '  '),
+                        TextSpan(text: item.content),
+                      ],
+                    ),
+                  ),
+                ],
+                if (item.commentCount > 0) ...[
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: () => showCommentsSheet(context, item.id),
+                    child: Text(
+                      '댓글 ${item.commentCount}개 모두 보기',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF999999),
+                      ),
                     ),
                   ),
                 ],
@@ -203,9 +273,14 @@ class FeedCard extends ConsumerWidget {
     );
   }
 
-  void _showFeatureNotice(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+  String _formatDate(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return '방금';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
+    if (diff.inHours < 24) return '${diff.inHours}시간 전';
+    if (diff.inDays < 7) return '${diff.inDays}일 전';
+    return DateFormat('yyyy.MM.dd').format(dt);
   }
 
   void _confirmDelete(
@@ -217,23 +292,23 @@ class FeedCard extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Post?'),
-        content: const Text('This cannot be undone.'),
+        title: const Text('게시글 삭제'),
+        content: const Text('삭제하면 복구할 수 없습니다.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: const Text('취소'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(ctx).pop(); // Close dialog
+              Navigator.of(ctx).pop();
               ref.read(feedProvider.notifier).deletePost(postId, imageUrl);
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('Post deleted')));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('게시글이 삭제되었습니다.')),
+              );
             },
             style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
-            child: const Text('Delete'),
+            child: const Text('삭제'),
           ),
         ],
       ),

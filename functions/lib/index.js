@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.repairWorker = exports.processPost = exports.createPostIntent = void 0;
+exports.repairWorker = exports.processPost = exports.createPostIntent = exports.suggestMoodKeywords = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const functions_1 = require("firebase-admin/functions");
@@ -37,17 +37,42 @@ const sendReleaseNotification = async (userId, postId) => {
         },
     });
 };
+/**
+ * Suggest mood keywords from an uploaded image.
+ * Called from Compose Screen before post creation.
+ */
+exports.suggestMoodKeywords = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+    }
+    const { imageUrl } = data;
+    if (!imageUrl) {
+        throw new functions.https.HttpsError("invalid-argument", "Missing required field: imageUrl");
+    }
+    try {
+        const keywords = await (0, ai_1.suggestKeywordsFromImage)(imageUrl);
+        return { success: true, keywords };
+    }
+    catch (error) {
+        console.error("suggestMoodKeywords failed:", error);
+        return {
+            success: true,
+            keywords: ["감성적", "따뜻한", "잔잔한", "추억", "평화로운"],
+        };
+    }
+});
 exports.createPostIntent = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
     }
     const uid = context.auth.uid;
-    const { imagePath, caption, requestId, visibility } = data;
+    const { imagePath, caption, requestId, visibility, moodKeywords } = data;
     const normalizedVisibility = typeof visibility === "string" ? visibility.toUpperCase() : "PRIVATE";
     if (!imagePath || !requestId) {
         throw new functions.https.HttpsError("invalid-argument", "Missing required fields (imagePath, requestId).");
     }
     const safeCaption = caption !== null && caption !== void 0 ? caption : "";
+    const safeMoodKeywords = Array.isArray(moodKeywords) ? moodKeywords : [];
     if (!["PRIVATE", "PUBLIC"].includes(normalizedVisibility)) {
         throw new functions.https.HttpsError("invalid-argument", "Invalid visibility value.");
     }
@@ -85,6 +110,7 @@ exports.createPostIntent = functions.https.onCall(async (data, context) => {
                 visibility: normalizedVisibility,
                 imageUrl: imagePath,
                 caption: safeCaption,
+                moodKeywords: safeMoodKeywords,
                 releaseTime,
                 createdAt: firestore_1.FieldValue.serverTimestamp(),
                 dailyKey,
@@ -129,6 +155,8 @@ const processPostDirect = async (postId) => {
     const postRef = db.collection("posts").doc(postId);
     let imageUrl = "";
     let authorId = "";
+    let caption = "";
+    let moodKeywords = [];
     let acquiredLease = false;
     try {
         await db.runTransaction(async (t) => {
@@ -153,6 +181,8 @@ const processPostDirect = async (postId) => {
             }
             imageUrl = post.imageUrl;
             authorId = post.authorId;
+            caption = post.caption || "";
+            moodKeywords = Array.isArray(post.moodKeywords) ? post.moodKeywords : [];
             acquiredLease = true;
             t.update(postRef, {
                 status: "PROCESSING",
@@ -165,7 +195,7 @@ const processPostDirect = async (postId) => {
         if (!acquiredLease) {
             return;
         }
-        const aiResult = await (0, ai_1.generateCurationAndMusic)(imageUrl);
+        const aiResult = await (0, ai_1.generateCurationAndMusic)(imageUrl, moodKeywords, caption);
         await db.runTransaction(async (t) => {
             const snapshot = await t.get(postRef);
             if (!snapshot.exists) {
@@ -182,6 +212,8 @@ const processPostDirect = async (postId) => {
                     curation: aiResult.curation,
                     youtubeUrl: aiResult.youtubeUrl,
                     youtubeTitle: aiResult.youtubeTitle,
+                    songTitle: aiResult.songTitle,
+                    musicReason: aiResult.musicReason,
                 },
                 processedAt: firestore_1.FieldValue.serverTimestamp(),
                 leaseOwner: firestore_1.FieldValue.delete(),

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:daylog/features/feed/domain/entities/comment_entity.dart';
 import 'package:daylog/features/feed/domain/entities/feed_entity.dart';
 import 'package:daylog/features/feed/domain/repositories/feed_repository.dart';
 import 'package:daylog/features/feed/presentation/providers/feed_provider.dart';
@@ -111,4 +112,14 @@ class _FakeFeedRepository implements FeedRepository {
 
   @override
   Future<void> updatePostCaption(String postId, String newCaption) async {}
+
+  @override
+  Stream<List<CommentEntity>> getComments(String postId) =>
+      Stream.value(const []);
+
+  @override
+  Future<void> addComment(String postId, String userId, String text) async {}
+
+  @override
+  Future<void> deleteComment(String postId, String commentId) async {}
 }

@@ -22,8 +22,12 @@ UserModel _$UserModelFromJson(Map<String, dynamic> json) {
 mixin _$UserModel {
   String get uid => throw _privateConstructorUsedError;
   String get email => throw _privateConstructorUsedError;
+  String get displayName => throw _privateConstructorUsedError;
+  bool get isVerified => throw _privateConstructorUsedError;
   String? get nickname => throw _privateConstructorUsedError;
   String? get photoUrl => throw _privateConstructorUsedError;
+  int get followersCount => throw _privateConstructorUsedError;
+  int get followingCount => throw _privateConstructorUsedError;
   @TimestampConverter()
   DateTime? get createdAt => throw _privateConstructorUsedError;
 
@@ -45,8 +49,12 @@ abstract class $UserModelCopyWith<$Res> {
   $Res call(
       {String uid,
       String email,
+      String displayName,
+      bool isVerified,
       String? nickname,
       String? photoUrl,
+      int followersCount,
+      int followingCount,
       @TimestampConverter() DateTime? createdAt});
 }
 
@@ -67,8 +75,12 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
   $Res call({
     Object? uid = null,
     Object? email = null,
+    Object? displayName = null,
+    Object? isVerified = null,
     Object? nickname = freezed,
     Object? photoUrl = freezed,
+    Object? followersCount = null,
+    Object? followingCount = null,
     Object? createdAt = freezed,
   }) {
     return _then(_value.copyWith(
@@ -80,6 +92,14 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
           ? _value.email
           : email // ignore: cast_nullable_to_non_nullable
               as String,
+      displayName: null == displayName
+          ? _value.displayName
+          : displayName // ignore: cast_nullable_to_non_nullable
+              as String,
+      isVerified: null == isVerified
+          ? _value.isVerified
+          : isVerified // ignore: cast_nullable_to_non_nullable
+              as bool,
       nickname: freezed == nickname
           ? _value.nickname
           : nickname // ignore: cast_nullable_to_non_nullable
@@ -88,6 +108,14 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
           ? _value.photoUrl
           : photoUrl // ignore: cast_nullable_to_non_nullable
               as String?,
+      followersCount: null == followersCount
+          ? _value.followersCount
+          : followersCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      followingCount: null == followingCount
+          ? _value.followingCount
+          : followingCount // ignore: cast_nullable_to_non_nullable
+              as int,
       createdAt: freezed == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -107,8 +135,12 @@ abstract class _$$UserModelImplCopyWith<$Res>
   $Res call(
       {String uid,
       String email,
+      String displayName,
+      bool isVerified,
       String? nickname,
       String? photoUrl,
+      int followersCount,
+      int followingCount,
       @TimestampConverter() DateTime? createdAt});
 }
 
@@ -127,8 +159,12 @@ class __$$UserModelImplCopyWithImpl<$Res>
   $Res call({
     Object? uid = null,
     Object? email = null,
+    Object? displayName = null,
+    Object? isVerified = null,
     Object? nickname = freezed,
     Object? photoUrl = freezed,
+    Object? followersCount = null,
+    Object? followingCount = null,
     Object? createdAt = freezed,
   }) {
     return _then(_$UserModelImpl(
@@ -140,6 +176,14 @@ class __$$UserModelImplCopyWithImpl<$Res>
           ? _value.email
           : email // ignore: cast_nullable_to_non_nullable
               as String,
+      displayName: null == displayName
+          ? _value.displayName
+          : displayName // ignore: cast_nullable_to_non_nullable
+              as String,
+      isVerified: null == isVerified
+          ? _value.isVerified
+          : isVerified // ignore: cast_nullable_to_non_nullable
+              as bool,
       nickname: freezed == nickname
           ? _value.nickname
           : nickname // ignore: cast_nullable_to_non_nullable
@@ -148,6 +192,14 @@ class __$$UserModelImplCopyWithImpl<$Res>
           ? _value.photoUrl
           : photoUrl // ignore: cast_nullable_to_non_nullable
               as String?,
+      followersCount: null == followersCount
+          ? _value.followersCount
+          : followersCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      followingCount: null == followingCount
+          ? _value.followingCount
+          : followingCount // ignore: cast_nullable_to_non_nullable
+              as int,
       createdAt: freezed == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -162,8 +214,12 @@ class _$UserModelImpl implements _UserModel {
   const _$UserModelImpl(
       {required this.uid,
       required this.email,
+      required this.displayName,
+      this.isVerified = false,
       this.nickname,
       this.photoUrl,
+      this.followersCount = 0,
+      this.followingCount = 0,
       @TimestampConverter() this.createdAt});
 
   factory _$UserModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -174,16 +230,27 @@ class _$UserModelImpl implements _UserModel {
   @override
   final String email;
   @override
+  final String displayName;
+  @override
+  @JsonKey()
+  final bool isVerified;
+  @override
   final String? nickname;
   @override
   final String? photoUrl;
+  @override
+  @JsonKey()
+  final int followersCount;
+  @override
+  @JsonKey()
+  final int followingCount;
   @override
   @TimestampConverter()
   final DateTime? createdAt;
 
   @override
   String toString() {
-    return 'UserModel(uid: $uid, email: $email, nickname: $nickname, photoUrl: $photoUrl, createdAt: $createdAt)';
+    return 'UserModel(uid: $uid, email: $email, displayName: $displayName, isVerified: $isVerified, nickname: $nickname, photoUrl: $photoUrl, followersCount: $followersCount, followingCount: $followingCount, createdAt: $createdAt)';
   }
 
   @override
@@ -193,18 +260,35 @@ class _$UserModelImpl implements _UserModel {
             other is _$UserModelImpl &&
             (identical(other.uid, uid) || other.uid == uid) &&
             (identical(other.email, email) || other.email == email) &&
+            (identical(other.displayName, displayName) ||
+                other.displayName == displayName) &&
+            (identical(other.isVerified, isVerified) ||
+                other.isVerified == isVerified) &&
             (identical(other.nickname, nickname) ||
                 other.nickname == nickname) &&
             (identical(other.photoUrl, photoUrl) ||
                 other.photoUrl == photoUrl) &&
+            (identical(other.followersCount, followersCount) ||
+                other.followersCount == followersCount) &&
+            (identical(other.followingCount, followingCount) ||
+                other.followingCount == followingCount) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, uid, email, nickname, photoUrl, createdAt);
+  int get hashCode => Object.hash(
+      runtimeType,
+      uid,
+      email,
+      displayName,
+      isVerified,
+      nickname,
+      photoUrl,
+      followersCount,
+      followingCount,
+      createdAt);
 
   /// Create a copy of UserModel
   /// with the given fields replaced by the non-null parameter values.
@@ -226,8 +310,12 @@ abstract class _UserModel implements UserModel {
   const factory _UserModel(
       {required final String uid,
       required final String email,
+      required final String displayName,
+      final bool isVerified,
       final String? nickname,
       final String? photoUrl,
+      final int followersCount,
+      final int followingCount,
       @TimestampConverter() final DateTime? createdAt}) = _$UserModelImpl;
 
   factory _UserModel.fromJson(Map<String, dynamic> json) =
@@ -238,9 +326,17 @@ abstract class _UserModel implements UserModel {
   @override
   String get email;
   @override
+  String get displayName;
+  @override
+  bool get isVerified;
+  @override
   String? get nickname;
   @override
   String? get photoUrl;
+  @override
+  int get followersCount;
+  @override
+  int get followingCount;
   @override
   @TimestampConverter()
   DateTime? get createdAt;

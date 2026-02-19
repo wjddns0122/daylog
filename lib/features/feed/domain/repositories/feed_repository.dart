@@ -1,4 +1,5 @@
 import '../entities/feed_entity.dart';
+import '../entities/comment_entity.dart';
 
 abstract class FeedRepository {
   Stream<List<FeedEntity>> getFeedStream();
@@ -19,4 +20,9 @@ abstract class FeedRepository {
   Future<void> deletePost(String postId, String imageUrl);
   Future<void> toggleLike(String postId, String userId, bool isLiked);
   Future<void> updatePostCaption(String postId, String newCaption);
+
+  // Comments
+  Stream<List<CommentEntity>> getComments(String postId);
+  Future<void> addComment(String postId, String userId, String text);
+  Future<void> deleteComment(String postId, String commentId);
 }

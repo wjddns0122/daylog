@@ -21,7 +21,38 @@ class CameraRepositoryImpl implements CameraRepository {
   }
 
   @override
-  Future<void> uploadPhoto(File file, String content, String visibility) async {
+  Future<List<String>> suggestMoodKeywords(String imageUrl) async {
+    debugPrint('🏷️ [MoodKeywords] Calling suggestMoodKeywords...');
+
+    if (_auth.currentUser == null) {
+      debugPrint('🔐 [Auth] No Firebase user, signing in anonymously...');
+      await _auth.signInAnonymously();
+    }
+
+    try {
+      final HttpsCallable callable =
+          _functions.httpsCallable('suggestMoodKeywords');
+      final result = await callable.call(<String, dynamic>{
+        'imageUrl': imageUrl,
+      });
+
+      final data = result.data as Map<String, dynamic>?;
+      if (data != null && data['keywords'] != null) {
+        final keywords = List<String>.from(data['keywords'] as List);
+        debugPrint('🏷️ [MoodKeywords] Got keywords: $keywords');
+        return keywords;
+      }
+    } catch (e) {
+      debugPrint('🏷️ [MoodKeywords] Failed: $e');
+    }
+
+    // Fallback defaults
+    return ['감성적', '따뜻한', '잔잔한', '추억', '평화로운'];
+  }
+
+  @override
+  Future<void> uploadPhoto(File file, String content, String visibility,
+      List<String> moodKeywords) async {
     debugPrint('🔐 [Auth] currentUser before check: ${_auth.currentUser?.uid}');
 
     if (_auth.currentUser == null) {
@@ -61,17 +92,14 @@ class CameraRepositoryImpl implements CameraRepository {
       debugPrint('   - caption: $content');
       debugPrint('   - requestId: $uuid');
       debugPrint('   - visibility: $visibility');
-
-      if (content.isEmpty) {
-        debugPrint(
-            '⚠️ Caption is empty! This might cause "Missing required fields" error if function checks stricter rules.');
-      }
+      debugPrint('   - moodKeywords: $moodKeywords');
 
       await callable.call(<String, dynamic>{
         'imagePath': downloadUrl,
         'caption': content,
         'requestId': uuid,
         'visibility': visibility,
+        'moodKeywords': moodKeywords,
       });
     } catch (e) {
       rethrow;

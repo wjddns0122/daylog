@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 // import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' as kakao;
-import '../../domain/entities/user_model.dart';
+import '../../domain/models/user_model.dart';
 
 class AuthRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -47,7 +47,7 @@ class AuthRepository {
       );
 
       // 5. Save to Firestore
-      await _firestore.collection('users').doc(user.uid).set(newUser.toMap());
+      await _firestore.collection('users').doc(user.uid).set(newUser.toJson());
 
       return newUser;
     } on FirebaseAuthException catch (e) {
@@ -80,7 +80,7 @@ class AuthRepository {
 
       // 3. Fetch User Data from Firestore
       final doc = await _firestore.collection('users').doc(user.uid).get();
-      return UserModel.fromFirestore(doc);
+      return UserModel.fromDocument(doc);
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
@@ -147,10 +147,10 @@ class AuthRepository {
           isVerified: true,
           nickname: kakaoUser.kakaoAccount?.profile?.nickname,
         );
-        await docRef.set(newUser.toMap());
+        await docRef.set(newUser.toJson());
         return newUser;
       } else {
-        return UserModel.fromFirestore(doc);
+        return UserModel.fromDocument(doc);
       }
     } catch (e) {
       throw Exception('Kakao Sign In failed: $e');
@@ -181,10 +181,10 @@ class AuthRepository {
         isVerified: true, // Social logins are verified
         nickname: user.displayName, // Default nickname
       );
-      await docRef.set(newUser.toMap());
+      await docRef.set(newUser.toJson());
       return newUser;
     } else {
-      return UserModel.fromFirestore(doc);
+      return UserModel.fromDocument(doc);
     }
   }
 

@@ -3,7 +3,7 @@ import * as admin from "firebase-admin";
 import { getFunctions } from "firebase-admin/functions";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { onTaskDispatched } from "firebase-functions/v2/tasks";
-import { generateCurationAndMusic } from "./ai";
+import { generateCurationAndMusic, suggestKeywordsFromImage } from "./ai";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -55,6 +55,41 @@ const sendReleaseNotification = async (
   });
 };
 
+/**
+ * Suggest mood keywords from an uploaded image.
+ * Called from Compose Screen before post creation.
+ */
+export const suggestMoodKeywords = functions.https.onCall(
+  async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be logged in.",
+      );
+    }
+
+    const { imageUrl } = data as { imageUrl?: string };
+
+    if (!imageUrl) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Missing required field: imageUrl",
+      );
+    }
+
+    try {
+      const keywords = await suggestKeywordsFromImage(imageUrl);
+      return { success: true, keywords };
+    } catch (error) {
+      console.error("suggestMoodKeywords failed:", error);
+      return {
+        success: true,
+        keywords: ["감성적", "따뜻한", "잔잔한", "추억", "평화로운"],
+      };
+    }
+  },
+);
+
 export const createPostIntent = functions.https.onCall(
   async (data, context) => {
     if (!context.auth) {
@@ -65,12 +100,14 @@ export const createPostIntent = functions.https.onCall(
     }
 
     const uid = context.auth.uid;
-    const { imagePath, caption, requestId, visibility } = data as {
-      imagePath?: string;
-      caption?: string;
-      requestId?: string;
-      visibility?: string;
-    };
+    const { imagePath, caption, requestId, visibility, moodKeywords } =
+      data as {
+        imagePath?: string;
+        caption?: string;
+        requestId?: string;
+        visibility?: string;
+        moodKeywords?: string[];
+      };
 
     const normalizedVisibility =
       typeof visibility === "string" ? visibility.toUpperCase() : "PRIVATE";
@@ -83,6 +120,7 @@ export const createPostIntent = functions.https.onCall(
     }
 
     const safeCaption = caption ?? "";
+    const safeMoodKeywords = Array.isArray(moodKeywords) ? moodKeywords : [];
 
     if (!["PRIVATE", "PUBLIC"].includes(normalizedVisibility)) {
       throw new functions.https.HttpsError(
@@ -141,6 +179,7 @@ export const createPostIntent = functions.https.onCall(
           visibility: normalizedVisibility,
           imageUrl: imagePath,
           caption: safeCaption,
+          moodKeywords: safeMoodKeywords,
           releaseTime,
           createdAt: FieldValue.serverTimestamp(),
           dailyKey,
@@ -194,6 +233,8 @@ const processPostDirect = async (postId: string): Promise<void> => {
 
   let imageUrl = "";
   let authorId = "";
+  let caption = "";
+  let moodKeywords: string[] = [];
   let acquiredLease = false;
 
   try {
@@ -229,6 +270,8 @@ const processPostDirect = async (postId: string): Promise<void> => {
 
       imageUrl = post.imageUrl;
       authorId = post.authorId;
+      caption = post.caption || "";
+      moodKeywords = Array.isArray(post.moodKeywords) ? post.moodKeywords : [];
       acquiredLease = true;
 
       t.update(postRef, {
@@ -244,7 +287,11 @@ const processPostDirect = async (postId: string): Promise<void> => {
       return;
     }
 
-    const aiResult = await generateCurationAndMusic(imageUrl);
+    const aiResult = await generateCurationAndMusic(
+      imageUrl,
+      moodKeywords,
+      caption,
+    );
 
     await db.runTransaction(async (t) => {
       const snapshot = await t.get(postRef);
@@ -264,6 +311,8 @@ const processPostDirect = async (postId: string): Promise<void> => {
           curation: aiResult.curation,
           youtubeUrl: aiResult.youtubeUrl,
           youtubeTitle: aiResult.youtubeTitle,
+          songTitle: aiResult.songTitle,
+          musicReason: aiResult.musicReason,
         },
         processedAt: FieldValue.serverTimestamp(),
         leaseOwner: FieldValue.delete(),

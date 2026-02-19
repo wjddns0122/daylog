@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/feed_entity.dart';
+import '../../domain/entities/comment_entity.dart';
 import '../../domain/repositories/feed_repository.dart';
 
 import 'package:firebase_storage/firebase_storage.dart';
@@ -145,5 +146,61 @@ class FeedRepositoryImpl implements FeedRepository {
       'caption': newCaption,
       'content': newCaption,
     });
+  }
+
+  @override
+  Stream<List<CommentEntity>> getComments(String postId) {
+    return _firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .orderBy('createdAt', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => CommentEntity.fromFirestore(doc))
+          .toList();
+    });
+  }
+
+  @override
+  Future<void> addComment(String postId, String userId, String text) async {
+    final batch = _firestore.batch();
+
+    final commentRef =
+        _firestore.collection('posts').doc(postId).collection('comments').doc();
+    batch.set(commentRef, {
+      'postId': postId,
+      'userId': userId,
+      'text': text,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    // Increment commentCount on the post
+    final postRef = _firestore.collection('posts').doc(postId);
+    batch.update(postRef, {
+      'commentCount': FieldValue.increment(1),
+    });
+
+    await batch.commit();
+  }
+
+  @override
+  Future<void> deleteComment(String postId, String commentId) async {
+    final batch = _firestore.batch();
+
+    final commentRef = _firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .doc(commentId);
+    batch.delete(commentRef);
+
+    final postRef = _firestore.collection('posts').doc(postId);
+    batch.update(postRef, {
+      'commentCount': FieldValue.increment(-1),
+    });
+
+    await batch.commit();
   }
 }

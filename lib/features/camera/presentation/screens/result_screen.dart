@@ -2,6 +2,7 @@ import 'package:daylog/features/feed/domain/entities/feed_entity.dart';
 import 'package:daylog/features/feed/presentation/providers/feed_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -40,12 +41,14 @@ class ResultScreen extends HookConsumerWidget {
     );
     final musicTitle = useMemoized(
       () => _resolveMusicTitle(post),
-      [post.id, post.musicTitle],
+      [post.id, post.musicTitle, post.songTitle],
     );
     final musicUrl = useMemoized(
       () => _resolveMusicUrl(post),
       [post.id, post.musicUrl],
     );
+    final musicReason = post.musicReason;
+    final moodKeywords = post.moodKeywords;
 
     return Scaffold(
       backgroundColor: const Color(0xFFD4D4D4),
@@ -54,7 +57,13 @@ class ResultScreen extends HookConsumerWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF474747)),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              context.go('/');
+            }
+          },
         ),
         title: Image.asset(
           'assets/images/logo_header.png',
@@ -160,6 +169,7 @@ class ResultScreen extends HookConsumerWidget {
                 ),
               ),
               const SizedBox(height: 14),
+              // ──── Music Card ────
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
@@ -169,60 +179,122 @@ class ResultScreen extends HookConsumerWidget {
                   color: const Color(0xFF24201B),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF3B2D),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.ondemand_video_rounded,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            musicTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontFamily: 'Georgia',
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF3B2D),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          Text(
-                            musicUrl == null
-                                ? 'No curated music yet.'
-                                : 'Tap to open on YouTube',
-                            style: const TextStyle(
-                              fontFamily: 'Georgia',
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
+                          child: const Icon(
+                            Icons.ondemand_video_rounded,
+                            color: Colors.white,
                           ),
-                        ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                musicTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontFamily: 'Georgia',
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                musicUrl == null
+                                    ? '추천 음악을 불러오는 중...'
+                                    : 'YouTube에서 열기',
+                                style: const TextStyle(
+                                  fontFamily: 'Georgia',
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: musicUrl == null
+                              ? null
+                              : () => _openMusicLink(context, launch, musicUrl),
+                          tooltip: 'YouTube에서 열기',
+                          color: Colors.white,
+                          icon: const Icon(Icons.open_in_new_rounded),
+                        ),
+                      ],
+                    ),
+                    if (musicReason != null &&
+                        musicReason.trim().isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.auto_awesome,
+                                size: 14, color: Color(0xFFCCCCCC)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                musicReason.trim(),
+                                style: const TextStyle(
+                                  fontFamily: 'System',
+                                  color: Color(0xFFBBBBBB),
+                                  fontSize: 12,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      onPressed: musicUrl == null
-                          ? null
-                          : () => _openMusicLink(context, launch, musicUrl),
-                      tooltip: 'Open YouTube',
-                      color: Colors.white,
-                      icon: const Icon(Icons.open_in_new_rounded),
-                    ),
+                    ],
                   ],
                 ),
               ),
+              // ──── Mood Keywords Chips ────
+              if (moodKeywords != null && moodKeywords.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: moodKeywords.map((kw) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8E8E8),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        '#$kw',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF666666),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
               const SizedBox(height: 24),
               const Text(
                 'Your Caption',
@@ -460,15 +532,19 @@ String _resolveCurationText(FeedEntity post) {
     return post.content.trim();
   }
 
-  return 'A quiet light lingers in this frame, like a small promise kept.';
+  return '고요한 빛이 머무는 순간, 작은 약속처럼 간직됩니다.';
 }
 
 String _resolveMusicTitle(FeedEntity post) {
+  // Prefer songTitle (e.g. "밤편지 - 아이유") over youtubeTitle
+  if (post.songTitle != null && post.songTitle!.trim().isNotEmpty) {
+    return post.songTitle!.trim();
+  }
   if (post.musicTitle != null && post.musicTitle!.trim().isNotEmpty) {
     return post.musicTitle!.trim();
   }
 
-  return 'Curated soundtrack';
+  return '추천 음악';
 }
 
 Uri? _resolveMusicUrl(FeedEntity post) {

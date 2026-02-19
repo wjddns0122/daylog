@@ -140,7 +140,7 @@ class _LikeScreenState extends ConsumerState<LikeScreen> {
   // ── Grid View (Figma-matched) ──
   Widget _buildGridView(List<FeedEntity> posts) {
     return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+      padding: const EdgeInsets.only(left: 9, right: 9, top: 8, bottom: 130),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 7,
@@ -157,7 +157,7 @@ class _LikeScreenState extends ConsumerState<LikeScreen> {
   // ── List View ──
   Widget _buildListView(List<FeedEntity> posts) {
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 130),
       itemCount: posts.length,
       itemBuilder: (context, index) {
         final item = posts[index];

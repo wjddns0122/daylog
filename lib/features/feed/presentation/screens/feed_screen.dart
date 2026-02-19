@@ -33,7 +33,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
             _buildAnimatedHeader(),
             _buildToggleBar(),
             _buildFeedSlivers(),
-            const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
+            // Extra bottom padding so content is not hidden behind the glassmorphic nav bar
+            const SliverPadding(padding: EdgeInsets.only(bottom: 130)),
           ],
         ),
       ),

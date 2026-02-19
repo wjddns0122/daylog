@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:daylog/features/camera/domain/repositories/camera_repository.dart';
 import 'package:daylog/features/camera/presentation/providers/camera_provider.dart';
 import 'package:daylog/features/camera/presentation/screens/compose_screen.dart';
+import 'package:daylog/features/feed/domain/entities/comment_entity.dart';
 import 'package:daylog/features/feed/domain/entities/feed_entity.dart';
 import 'package:daylog/features/feed/domain/repositories/feed_repository.dart';
 import 'package:daylog/features/feed/presentation/providers/feed_provider.dart';
@@ -142,8 +143,14 @@ class _FakeCameraRepository implements CameraRepository {
   Future<String?> pickImage() async => imagePath;
 
   @override
-  Future<void> uploadPhoto(File file, String content, String visibility) async {
+  Future<void> uploadPhoto(File file, String content, String visibility,
+      List<String> moodKeywords) async {
     await onUpload(content);
+  }
+
+  @override
+  Future<List<String>> suggestMoodKeywords(String imageUrl) async {
+    return ['감성적', '따뜻한', '잔잔한', '추억', '평화로운'];
   }
 }
 
@@ -285,4 +292,14 @@ class _FakeFeedRepository implements FeedRepository {
     _feedController.add(List<FeedEntity>.from(_posts));
     _latestController.add(updated);
   }
+
+  @override
+  Stream<List<CommentEntity>> getComments(String postId) =>
+      Stream.value(const []);
+
+  @override
+  Future<void> addComment(String postId, String userId, String text) async {}
+
+  @override
+  Future<void> deleteComment(String postId, String commentId) async {}
 }
