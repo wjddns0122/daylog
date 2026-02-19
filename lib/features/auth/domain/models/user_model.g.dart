@@ -14,6 +14,7 @@ _$UserModelImpl _$$UserModelImplFromJson(Map<String, dynamic> json) =>
       isVerified: json['isVerified'] as bool? ?? false,
       nickname: json['nickname'] as String?,
       photoUrl: json['photoUrl'] as String?,
+      profileSetupCompleted: json['profileSetupCompleted'] as bool? ?? true,
       followersCount: (json['followersCount'] as num?)?.toInt() ?? 0,
       followingCount: (json['followingCount'] as num?)?.toInt() ?? 0,
       createdAt: const TimestampConverter().fromJson(json['createdAt']),
@@ -27,6 +28,7 @@ Map<String, dynamic> _$$UserModelImplToJson(_$UserModelImpl instance) =>
       'isVerified': instance.isVerified,
       'nickname': instance.nickname,
       'photoUrl': instance.photoUrl,
+      'profileSetupCompleted': instance.profileSetupCompleted,
       'followersCount': instance.followersCount,
       'followingCount': instance.followingCount,
       'createdAt': _$JsonConverterToJson<dynamic, DateTime>(

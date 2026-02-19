@@ -19,7 +19,8 @@ class SignupScreen extends ConsumerStatefulWidget {
 class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _nameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _firstNameController = TextEditingController();
   final _nicknameController = TextEditingController();
   bool _isAgreed = false;
   bool _isPasswordVisible = false;
@@ -28,18 +29,25 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _nameController.dispose();
+    _lastNameController.dispose();
+    _firstNameController.dispose();
     _nicknameController.dispose();
     super.dispose();
   }
 
   void _onSignUp() async {
-    final name = _nameController.text.trim();
+    final lastName = _lastNameController.text.trim();
+    final firstName = _firstNameController.text.trim();
     final nickname = _nicknameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+    final name = '$lastName $firstName'.trim();
 
-    if (name.isEmpty || nickname.isEmpty || email.isEmpty || password.isEmpty) {
+    if (lastName.isEmpty ||
+        firstName.isEmpty ||
+        nickname.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('모든 항목을 입력해주세요.')),
       );
@@ -84,14 +92,20 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         ),
         const Spacer(flex: 1),
         AuthTextField(
-          controller: _nameController,
+          controller: _lastNameController,
           hintText: '성',
           prefixIcon: Icons.person_outline,
         ),
         const SizedBox(height: 16),
         AuthTextField(
-          controller: _nicknameController,
+          controller: _firstNameController,
           hintText: '이름',
+          prefixIcon: Icons.person_outline,
+        ),
+        const SizedBox(height: 16),
+        AuthTextField(
+          controller: _nicknameController,
+          hintText: '닉네임',
           prefixIcon: Icons.person_outline,
         ),
         const SizedBox(height: 16),

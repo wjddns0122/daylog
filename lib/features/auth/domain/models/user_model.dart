@@ -13,6 +13,7 @@ class UserModel with _$UserModel {
     @Default(false) bool isVerified,
     String? nickname,
     String? photoUrl,
+    @Default(true) bool profileSetupCompleted,
     @Default(0) int followersCount,
     @Default(0) int followingCount,
     @TimestampConverter() DateTime? createdAt,

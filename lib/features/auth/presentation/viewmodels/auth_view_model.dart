@@ -100,4 +100,14 @@ class AuthViewModel extends _$AuthViewModel {
           newPassword: newPassword,
         );
   }
+
+  Future<void> completeProfileSetup({
+    required String nickname,
+    String? profileImagePath,
+  }) {
+    return ref.read(authRepositoryProvider).completeProfileSetup(
+          nickname: nickname,
+          profileImagePath: profileImagePath,
+        );
+  }
 }

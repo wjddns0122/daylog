@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:daylog/features/auth/domain/models/user_model.dart';
 import 'package:daylog/features/auth/domain/repositories/auth_repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'dart:io';
 
 part 'auth_repository_impl.g.dart';
 
@@ -14,13 +16,16 @@ class AuthRepositoryImpl implements AuthRepository {
   final FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
   final GoogleSignIn _googleSignIn;
+  final FirebaseStorage _storage;
 
   AuthRepositoryImpl({
     FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
     GoogleSignIn? googleSignIn,
+    FirebaseStorage? storage,
   })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
         _firestore = firestore ?? FirebaseFirestore.instance,
+        _storage = storage ?? FirebaseStorage.instance,
         _googleSignIn = googleSignIn ??
             GoogleSignIn(
               scopes: ['email'],
@@ -28,56 +33,56 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Stream<UserModel?> get authStateChanges {
-    return _firebaseAuth.authStateChanges().asyncMap((user) async {
-      if (user == null) return null;
-
-      final doc = await _firestore.collection('users').doc(user.uid).get();
-      if (doc.exists) {
-        final data = doc.data();
-        // Auto-patch missing search fields for legacy user docs
-        if (data != null && !data.containsKey('nicknameLower')) {
-          try {
-            final nickname = data['nickname'] as String? ??
-                data['displayName'] as String? ??
-                '';
-            final displayName = data['displayName'] as String? ?? '';
-            await _firestore.collection('users').doc(user.uid).update({
-              'nicknameLower': nickname.toLowerCase(),
-              'displayNameLower': displayName.toLowerCase(),
-            });
-          } catch (_) {
-            // Non-critical: search might not work for this user yet
+    return _firebaseAuth.authStateChanges().asyncExpand((user) async* {
+      if (user == null) {
+        yield null;
+        return;
+      }
+      final userRef = _firestore.collection('users').doc(user.uid);
+      yield* userRef.snapshots().asyncMap((doc) async {
+        if (doc.exists) {
+          final data = doc.data();
+          if (data != null && !data.containsKey('nicknameLower')) {
+            try {
+              final nickname = data['nickname'] as String? ??
+                  data['displayName'] as String? ??
+                  '';
+              final displayName = data['displayName'] as String? ?? '';
+              await userRef.update({
+                'nicknameLower': nickname.toLowerCase(),
+                'displayNameLower': displayName.toLowerCase(),
+              });
+            } catch (_) {}
           }
+          return UserModel.fromDocument(doc);
         }
-        return UserModel.fromDocument(doc);
-      }
 
-      // Auto-create user doc if missing (emulator or legacy accounts)
-      final fallbackName =
-          user.displayName ?? user.email?.split('@').first ?? '';
-      final newUser = UserModel(
-        uid: user.uid,
-        email: user.email ?? '',
-        displayName: fallbackName,
-        photoUrl: user.photoURL,
-        nickname: fallbackName,
-        isVerified: user.emailVerified,
-        createdAt: DateTime.now(),
-      );
+        final fallbackName =
+            user.displayName ?? user.email?.split('@').first ?? '';
+        final newUser = UserModel(
+          uid: user.uid,
+          email: user.email ?? '',
+          displayName: fallbackName,
+          photoUrl: user.photoURL,
+          nickname: fallbackName,
+          isVerified: user.emailVerified,
+          profileSetupCompleted: false,
+          createdAt: DateTime.now(),
+        );
 
-      try {
-        await _firestore.collection('users').doc(user.uid).set({
-          ...newUser.toJson(),
-          'nicknameLower': (newUser.nickname ?? '').toLowerCase(),
-          'displayNameLower': newUser.displayName.toLowerCase(),
-          'loginMethod': 'unknown',
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      } catch (_) {
-        // If Firestore write fails (e.g. rules), still return the model
-      }
+        try {
+          await userRef.set({
+            ...newUser.toJson(),
+            'nicknameLower': (newUser.nickname ?? '').toLowerCase(),
+            'displayNameLower': newUser.displayName.toLowerCase(),
+            'profileSetupCompleted': false,
+            'loginMethod': 'unknown',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        } catch (_) {}
 
-      return newUser;
+        return newUser;
+      });
     });
   }
 
@@ -115,6 +120,7 @@ class AuthRepositoryImpl implements AuthRepository {
         ...newUser.toJson(),
         'nicknameLower': (newUser.nickname ?? '').toLowerCase(),
         'displayNameLower': newUser.displayName.toLowerCase(),
+        'profileSetupCompleted': false,
         'loginMethod': 'email',
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -155,6 +161,7 @@ class AuthRepositoryImpl implements AuthRepository {
         ...newUser.toJson(),
         'nicknameLower': nickname.toLowerCase(),
         'displayNameLower': name.toLowerCase(),
+        'profileSetupCompleted': false,
         'name':
             name, // Store real name explicitly if needed, or rely on internal logic
         'loginMethod': 'email',
@@ -269,6 +276,7 @@ class AuthRepositoryImpl implements AuthRepository {
         ...newUser.toJson(),
         'nicknameLower': (newUser.nickname ?? '').toLowerCase(),
         'displayNameLower': newUser.displayName.toLowerCase(),
+        'profileSetupCompleted': false,
         'loginMethod': loginMethod,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -306,6 +314,49 @@ class AuthRepositoryImpl implements AuthRepository {
     );
     await user.reauthenticateWithCredential(credential);
     await user.updatePassword(newPassword);
+  }
+
+  @override
+  Future<void> completeProfileSetup({
+    required String nickname,
+    String? profileImagePath,
+  }) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'No authenticated user found.',
+      );
+    }
+
+    final trimmedNickname = nickname.trim();
+    if (trimmedNickname.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'invalid-display-name',
+        message: 'Nickname is required.',
+      );
+    }
+
+    String? photoUrl = user.photoURL;
+    if (profileImagePath != null && profileImagePath.trim().isNotEmpty) {
+      final file = File(profileImagePath);
+      final ref = _storage.ref().child('profile_images/${user.uid}.jpg');
+      await ref.putFile(file);
+      photoUrl = await ref.getDownloadURL();
+    }
+
+    await _firestore.collection('users').doc(user.uid).set({
+      'nickname': trimmedNickname,
+      'nicknameLower': trimmedNickname.toLowerCase(),
+      'photoUrl': photoUrl,
+      'profileSetupCompleted': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    await user.updateDisplayName(trimmedNickname);
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      await user.updatePhotoURL(photoUrl);
+    }
   }
 
   @override

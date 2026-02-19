@@ -19,5 +19,9 @@ abstract class AuthRepository {
     required String currentPassword,
     required String newPassword,
   });
+  Future<void> completeProfileSetup({
+    required String nickname,
+    String? profileImagePath,
+  });
   Future<void> signOut();
 }

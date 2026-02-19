@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:daylog/features/auth/presentation/screens/login_screen.dart';
+import 'package:daylog/features/auth/presentation/screens/profile_setup_screen.dart';
 import 'package:daylog/features/auth/presentation/screens/signup_screen.dart';
 import 'package:daylog/features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'package:daylog/features/camera/presentation/screens/compose_screen.dart';
@@ -41,6 +42,8 @@ GoRouter router(Ref ref) {
 
       final isLoggingIn = state.uri.toString() == '/login';
       final isSigningUp = state.uri.toString() == '/signup';
+      final isProfileSetup = state.uri.toString() == '/profile-setup';
+      final isProfileCompleted = user?.profileSetupCompleted ?? true;
 
       if (isLoading) return null;
 
@@ -48,7 +51,15 @@ GoRouter router(Ref ref) {
         return '/login';
       }
 
-      if (user != null && isLoggingIn) {
+      if (user != null && !isProfileCompleted && !isProfileSetup) {
+        return '/profile-setup';
+      }
+
+      if (user != null && isProfileSetup && isProfileCompleted) {
+        return '/';
+      }
+
+      if (user != null && (isLoggingIn || isSigningUp)) {
         return '/';
       }
 
@@ -101,6 +112,11 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignupScreen(),
+      ),
+      GoRoute(
+        path: '/profile-setup',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ProfileSetupScreen(),
       ),
       GoRoute(
         path: '/compose',

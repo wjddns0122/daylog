@@ -26,6 +26,7 @@ mixin _$UserModel {
   bool get isVerified => throw _privateConstructorUsedError;
   String? get nickname => throw _privateConstructorUsedError;
   String? get photoUrl => throw _privateConstructorUsedError;
+  bool get profileSetupCompleted => throw _privateConstructorUsedError;
   int get followersCount => throw _privateConstructorUsedError;
   int get followingCount => throw _privateConstructorUsedError;
   @TimestampConverter()
@@ -53,6 +54,7 @@ abstract class $UserModelCopyWith<$Res> {
       bool isVerified,
       String? nickname,
       String? photoUrl,
+      bool profileSetupCompleted,
       int followersCount,
       int followingCount,
       @TimestampConverter() DateTime? createdAt});
@@ -79,6 +81,7 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
     Object? isVerified = null,
     Object? nickname = freezed,
     Object? photoUrl = freezed,
+    Object? profileSetupCompleted = null,
     Object? followersCount = null,
     Object? followingCount = null,
     Object? createdAt = freezed,
@@ -108,6 +111,10 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
           ? _value.photoUrl
           : photoUrl // ignore: cast_nullable_to_non_nullable
               as String?,
+      profileSetupCompleted: null == profileSetupCompleted
+          ? _value.profileSetupCompleted
+          : profileSetupCompleted // ignore: cast_nullable_to_non_nullable
+              as bool,
       followersCount: null == followersCount
           ? _value.followersCount
           : followersCount // ignore: cast_nullable_to_non_nullable
@@ -139,6 +146,7 @@ abstract class _$$UserModelImplCopyWith<$Res>
       bool isVerified,
       String? nickname,
       String? photoUrl,
+      bool profileSetupCompleted,
       int followersCount,
       int followingCount,
       @TimestampConverter() DateTime? createdAt});
@@ -163,6 +171,7 @@ class __$$UserModelImplCopyWithImpl<$Res>
     Object? isVerified = null,
     Object? nickname = freezed,
     Object? photoUrl = freezed,
+    Object? profileSetupCompleted = null,
     Object? followersCount = null,
     Object? followingCount = null,
     Object? createdAt = freezed,
@@ -192,6 +201,10 @@ class __$$UserModelImplCopyWithImpl<$Res>
           ? _value.photoUrl
           : photoUrl // ignore: cast_nullable_to_non_nullable
               as String?,
+      profileSetupCompleted: null == profileSetupCompleted
+          ? _value.profileSetupCompleted
+          : profileSetupCompleted // ignore: cast_nullable_to_non_nullable
+              as bool,
       followersCount: null == followersCount
           ? _value.followersCount
           : followersCount // ignore: cast_nullable_to_non_nullable
@@ -218,6 +231,7 @@ class _$UserModelImpl implements _UserModel {
       this.isVerified = false,
       this.nickname,
       this.photoUrl,
+      this.profileSetupCompleted = true,
       this.followersCount = 0,
       this.followingCount = 0,
       @TimestampConverter() this.createdAt});
@@ -240,6 +254,9 @@ class _$UserModelImpl implements _UserModel {
   final String? photoUrl;
   @override
   @JsonKey()
+  final bool profileSetupCompleted;
+  @override
+  @JsonKey()
   final int followersCount;
   @override
   @JsonKey()
@@ -250,7 +267,7 @@ class _$UserModelImpl implements _UserModel {
 
   @override
   String toString() {
-    return 'UserModel(uid: $uid, email: $email, displayName: $displayName, isVerified: $isVerified, nickname: $nickname, photoUrl: $photoUrl, followersCount: $followersCount, followingCount: $followingCount, createdAt: $createdAt)';
+    return 'UserModel(uid: $uid, email: $email, displayName: $displayName, isVerified: $isVerified, nickname: $nickname, photoUrl: $photoUrl, profileSetupCompleted: $profileSetupCompleted, followersCount: $followersCount, followingCount: $followingCount, createdAt: $createdAt)';
   }
 
   @override
@@ -268,6 +285,8 @@ class _$UserModelImpl implements _UserModel {
                 other.nickname == nickname) &&
             (identical(other.photoUrl, photoUrl) ||
                 other.photoUrl == photoUrl) &&
+            (identical(other.profileSetupCompleted, profileSetupCompleted) ||
+                other.profileSetupCompleted == profileSetupCompleted) &&
             (identical(other.followersCount, followersCount) ||
                 other.followersCount == followersCount) &&
             (identical(other.followingCount, followingCount) ||
@@ -286,6 +305,7 @@ class _$UserModelImpl implements _UserModel {
       isVerified,
       nickname,
       photoUrl,
+      profileSetupCompleted,
       followersCount,
       followingCount,
       createdAt);
@@ -314,6 +334,7 @@ abstract class _UserModel implements UserModel {
       final bool isVerified,
       final String? nickname,
       final String? photoUrl,
+      final bool profileSetupCompleted,
       final int followersCount,
       final int followingCount,
       @TimestampConverter() final DateTime? createdAt}) = _$UserModelImpl;
@@ -333,6 +354,8 @@ abstract class _UserModel implements UserModel {
   String? get nickname;
   @override
   String? get photoUrl;
+  @override
+  bool get profileSetupCompleted;
   @override
   int get followersCount;
   @override
