@@ -11,6 +11,9 @@ class ProfileHeader extends StatelessWidget {
   final int followingCount;
   final String? avatarUrl;
   final VoidCallback? onEditProfile;
+  final VoidCallback? onTapFollowers;
+  final VoidCallback? onTapFollowing;
+  final bool showEditProfileButton;
 
   const ProfileHeader({
     super.key,
@@ -22,6 +25,9 @@ class ProfileHeader extends StatelessWidget {
     required this.followingCount,
     this.avatarUrl,
     this.onEditProfile,
+    this.onTapFollowers,
+    this.onTapFollowing,
+    this.showEditProfileButton = true,
   });
 
   @override
@@ -62,8 +68,18 @@ class ProfileHeader extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildStatItem(context, postCount, '마이로그'),
-                    _buildStatItem(context, followerCount, '팔로워'),
-                    _buildStatItem(context, followingCount, '팔로잉'),
+                    _buildStatItem(
+                      context,
+                      followerCount,
+                      '팔로워',
+                      onTap: onTapFollowers,
+                    ),
+                    _buildStatItem(
+                      context,
+                      followingCount,
+                      '팔로잉',
+                      onTap: onTapFollowing,
+                    ),
                   ],
                 ),
               ),
@@ -112,50 +128,63 @@ class ProfileHeader extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 20),
-
-          // Edit Profile Button
-          SizedBox(
-            width: double.infinity,
-            height: 36,
-            child: OutlinedButton(
-              onPressed: onEditProfile,
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.2)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-                foregroundColor: AppTheme.primaryColor,
-                padding: EdgeInsets.zero,
+          if (showEditProfileButton) ...[
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 36,
+              child: OutlinedButton(
+                onPressed: onEditProfile,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  foregroundColor: AppTheme.primaryColor,
+                  padding: EdgeInsets.zero,
+                ),
+                child: const Text('프로필 편집',
+                    style:
+                        TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               ),
-              child: const Text('프로필 편집',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(BuildContext context, int count, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          count.toString(),
-          style: AppTheme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
+  Widget _buildStatItem(
+    BuildContext context,
+    int count,
+    String label, {
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              count.toString(),
+              style: AppTheme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+            Text(
+              label,
+              style: AppTheme.textTheme.bodyMedium?.copyWith(
+                fontSize: 13,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
         ),
-        Text(
-          label,
-          style: AppTheme.textTheme.bodyMedium?.copyWith(
-            fontSize: 13,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

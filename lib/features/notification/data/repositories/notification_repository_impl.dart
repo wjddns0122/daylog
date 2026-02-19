@@ -9,13 +9,11 @@ class NotificationRepositoryImpl implements NotificationRepository {
   NotificationRepositoryImpl({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
-    this.useMockData = false,
   })  : _firestore = firestore,
         _auth = auth;
 
   final FirebaseFirestore? _firestore;
   final FirebaseAuth? _auth;
-  final bool useMockData;
   static const String _pushEnabledKey = 'notification.push_enabled';
 
   FirebaseFirestore get _resolvedFirestore =>
@@ -25,10 +23,6 @@ class NotificationRepositoryImpl implements NotificationRepository {
 
   @override
   Stream<List<NotificationEntity>> getNotifications() {
-    if (useMockData) {
-      return Stream.value(_mockNotifications);
-    }
-
     final user = _resolvedAuth.currentUser;
     if (user == null) {
       return const Stream.empty();
@@ -48,10 +42,6 @@ class NotificationRepositoryImpl implements NotificationRepository {
 
   @override
   Future<void> markAllAsRead() async {
-    if (useMockData) {
-      return;
-    }
-
     final user = _resolvedAuth.currentUser;
     if (user == null) {
       return;
@@ -86,30 +76,3 @@ class NotificationRepositoryImpl implements NotificationRepository {
     await prefs.setBool(_pushEnabledKey, enabled);
   }
 }
-
-final List<NotificationEntity> _mockNotifications = [
-  NotificationEntity(
-    id: 'n-film-1',
-    title: 'Film Developed',
-    message: 'Your photo is developed and ready to view.',
-    type: NotificationType.filmDeveloped,
-    createdAt: DateTime.now().subtract(const Duration(minutes: 18)),
-    isRead: false,
-  ),
-  NotificationEntity(
-    id: 'n-like-1',
-    title: 'New Like',
-    message: '@jenny liked your latest memory.',
-    type: NotificationType.like,
-    createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-    isRead: true,
-  ),
-  NotificationEntity(
-    id: 'n-comment-1',
-    title: 'New Comment',
-    message: '@mike commented: "The lighting is amazing."',
-    type: NotificationType.comment,
-    createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-    isRead: true,
-  ),
-];

@@ -1,5 +1,7 @@
 import 'package:daylog/core/theme/app_theme.dart';
+import 'package:daylog/features/feed/presentation/providers/user_profile_provider.dart';
 import 'package:daylog/features/auth/presentation/viewmodels/auth_view_model.dart';
+import 'package:daylog/features/auth/domain/models/user_model.dart';
 import 'package:daylog/features/profile/presentation/viewmodels/profile_view_model.dart';
 import 'package:daylog/features/profile/presentation/widgets/profile_header.dart';
 import 'package:flutter/material.dart';
@@ -8,14 +10,22 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:intl/intl.dart';
 
 class ProfileScreen extends HookConsumerWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.userId});
+
+  final String? userId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authViewModelProvider);
-    final user = authState.valueOrNull;
+    final authUser = authState.valueOrNull;
+    final viewedUserAsync = userId == null
+        ? const AsyncValue<UserModel?>.data(null)
+        : ref.watch(userProfileProvider(userId!));
+    final viewedUser = viewedUserAsync.valueOrNull;
 
-    // Watch ProfileViewModel
+    final isOwnProfile = userId == null || userId == authUser?.uid;
+    final user = isOwnProfile ? authUser : viewedUser;
+
     final profileState = user != null
         ? ref.watch(profileViewModelProvider(user.uid))
         : const ProfileState();
@@ -44,19 +54,26 @@ class ProfileScreen extends HookConsumerWidget {
             elevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-              onPressed: () => context.go('/'), // Go back to Home/Feed
+              onPressed: () {
+                if (Navigator.of(context).canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/');
+                }
+              },
             ),
             actions: [
-              IconButton(
-                onPressed: () => context.push('/settings'),
-                icon: const Icon(
-                  Icons.menu, // Hamburger menu is more "Insta"
-                  color: AppTheme.primaryColor,
+              if (isOwnProfile)
+                IconButton(
+                  onPressed: () => context.push('/settings'),
+                  icon: const Icon(
+                    Icons.menu,
+                    color: AppTheme.primaryColor,
+                  ),
                 ),
-              ),
             ],
           ),
-          if (user == null)
+          if (user == null || viewedUserAsync.isLoading)
             const SliverFillRemaining(
               child: Center(child: CircularProgressIndicator()),
             )
@@ -71,11 +88,20 @@ class ProfileScreen extends HookConsumerWidget {
                 postCount: profileState.posts.length,
                 followerCount: user.followersCount,
                 followingCount: user.followingCount,
-                onEditProfile: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('프로필 편집 기능 준비 중입니다.')),
-                  );
-                },
+                onTapFollowers: isOwnProfile
+                    ? () => context.push('/profile/followers')
+                    : null,
+                onTapFollowing: isOwnProfile
+                    ? () => context.push('/profile/following')
+                    : null,
+                showEditProfileButton: isOwnProfile,
+                onEditProfile: isOwnProfile
+                    ? () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('프로필 편집 기능 준비 중입니다.')),
+                        );
+                      }
+                    : null,
               ),
             ),
 

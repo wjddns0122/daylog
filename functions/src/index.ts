@@ -15,6 +15,16 @@ type ProcessPostPayload = {
   postId: string;
 };
 
+type FollowRequestStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "CANCELED";
+
+type FollowRequestDoc = {
+  requesterId: string;
+  targetUserId: string;
+  status: FollowRequestStatus;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+};
+
 const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
 
 const enqueueProcessPost = async (
@@ -37,6 +47,27 @@ const enqueueProcessPost = async (
   await getFunctions()
     .taskQueue("processPost")
     .enqueue({ postId }, { scheduleDelaySeconds });
+};
+
+const followEdgeDocId = (followerId: string, followingId: string): string =>
+  `${followerId}_${followingId}`;
+
+const createNotification = async (
+  userId: string,
+  type: string,
+  title: string,
+  message: string,
+  payload: Record<string, unknown>,
+): Promise<void> => {
+  await db.collection("notifications").add({
+    userId,
+    type,
+    title,
+    message,
+    isRead: false,
+    payload,
+    createdAt: FieldValue.serverTimestamp(),
+  });
 };
 
 const sendReleaseNotification = async (
@@ -222,6 +253,275 @@ export const createPostIntent = functions.https.onCall(
     }
   },
 );
+
+export const sendFollowRequest = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const requesterId = context.auth.uid;
+  const { targetUserId } = data as { targetUserId?: string };
+
+  if (!targetUserId || typeof targetUserId !== "string") {
+    throw new functions.https.HttpsError("invalid-argument", "Missing targetUserId.");
+  }
+  if (targetUserId === requesterId) {
+    throw new functions.https.HttpsError("invalid-argument", "Cannot follow yourself.");
+  }
+
+  const edgeRef = db.collection("follows").doc(followEdgeDocId(requesterId, targetUserId));
+  const requesterUserRef = db.collection("users").doc(requesterId);
+  const targetUserRef = db.collection("users").doc(targetUserId);
+
+  await db.runTransaction(async (t) => {
+    const existingEdge = await t.get(edgeRef);
+
+    if (existingEdge.exists) {
+      return;
+    }
+
+    t.set(edgeRef, {
+      followerId: requesterId,
+      followingId: targetUserId,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    t.set(
+      requesterUserRef,
+      {
+        followingCount: FieldValue.increment(1),
+      },
+      { merge: true },
+    );
+    t.set(
+      targetUserRef,
+      {
+        followersCount: FieldValue.increment(1),
+      },
+      { merge: true },
+    );
+  });
+
+  await createNotification(
+    targetUserId,
+    "follow_accepted",
+    "새 팔로워",
+    "새로운 사용자가 회원님을 팔로우합니다.",
+    {
+      actorUserId: requesterId,
+      targetUserId,
+    },
+  );
+
+  return { success: true, status: "FOLLOWING_CREATED" };
+});
+
+export const cancelFollowRequest = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const followerId = context.auth.uid;
+  const { targetUserId } = data as { targetUserId?: string };
+
+  if (!targetUserId || typeof targetUserId !== "string") {
+    throw new functions.https.HttpsError("invalid-argument", "Missing targetUserId.");
+  }
+
+  const edgeRef = db.collection("follows").doc(followEdgeDocId(followerId, targetUserId));
+
+  await db.runTransaction(async (t) => {
+    const edgeDoc = await t.get(edgeRef);
+    if (!edgeDoc.exists) {
+      return;
+    }
+
+    t.delete(edgeRef);
+    t.set(
+      db.collection("users").doc(followerId),
+      {
+        followingCount: FieldValue.increment(-1),
+      },
+      { merge: true },
+    );
+    t.set(
+      db.collection("users").doc(targetUserId),
+      {
+        followersCount: FieldValue.increment(-1),
+      },
+      { merge: true },
+    );
+  });
+
+  return { success: true };
+});
+
+export const acceptFollowRequest = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const targetUserId = context.auth.uid;
+  const { requestId } = data as { requestId?: string };
+  if (!requestId || typeof requestId !== "string") {
+    throw new functions.https.HttpsError("invalid-argument", "Missing requestId.");
+  }
+
+  const requestRef = db.collection("follow_requests").doc(requestId);
+
+  let requesterId = "";
+  await db.runTransaction(async (t) => {
+    const requestDoc = await t.get(requestRef);
+    if (!requestDoc.exists) {
+      throw new functions.https.HttpsError("not-found", "Follow request not found.");
+    }
+
+    const request = requestDoc.data() as FollowRequestDoc;
+    if (request.targetUserId !== targetUserId) {
+      throw new functions.https.HttpsError("permission-denied", "Not allowed.");
+    }
+
+    requesterId = request.requesterId;
+    if (request.status !== "PENDING") {
+      return;
+    }
+
+    const edgeRef = db.collection("follows").doc(followEdgeDocId(request.requesterId, targetUserId));
+    const requesterUserRef = db.collection("users").doc(request.requesterId);
+    const targetUserRef = db.collection("users").doc(targetUserId);
+
+    t.set(edgeRef, {
+      followerId: request.requesterId,
+      followingId: targetUserId,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    t.update(requestRef, {
+      status: "ACCEPTED",
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    t.set(
+      requesterUserRef,
+      {
+        followingCount: FieldValue.increment(1),
+      },
+      { merge: true },
+    );
+    t.set(
+      targetUserRef,
+      {
+        followersCount: FieldValue.increment(1),
+      },
+      { merge: true },
+    );
+  });
+
+  if (requesterId) {
+    await createNotification(
+      requesterId,
+      "follow_accepted",
+      "팔로우 요청 수락됨",
+      "당신의 팔로우 요청이 수락되었습니다.",
+      {
+        requesterId,
+        targetUserId,
+        requestId,
+      },
+    );
+  }
+
+  return { success: true };
+});
+
+export const rejectFollowRequest = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const targetUserId = context.auth.uid;
+  const { requestId } = data as { requestId?: string };
+  if (!requestId || typeof requestId !== "string") {
+    throw new functions.https.HttpsError("invalid-argument", "Missing requestId.");
+  }
+
+  const requestRef = db.collection("follow_requests").doc(requestId);
+  let requesterId = "";
+
+  await db.runTransaction(async (t) => {
+    const requestDoc = await t.get(requestRef);
+    if (!requestDoc.exists) {
+      throw new functions.https.HttpsError("not-found", "Follow request not found.");
+    }
+
+    const request = requestDoc.data() as FollowRequestDoc;
+    if (request.targetUserId !== targetUserId) {
+      throw new functions.https.HttpsError("permission-denied", "Not allowed.");
+    }
+
+    requesterId = request.requesterId;
+    if (request.status !== "PENDING") {
+      return;
+    }
+
+    t.update(requestRef, {
+      status: "REJECTED",
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  if (requesterId) {
+    await createNotification(
+      requesterId,
+      "follow_rejected",
+      "팔로우 요청 거절됨",
+      "당신의 팔로우 요청이 거절되었습니다.",
+      {
+        requesterId,
+        targetUserId,
+        requestId,
+      },
+    );
+  }
+
+  return { success: true };
+});
+
+export const unfollowUser = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const followerId = context.auth.uid;
+  const { targetUserId } = data as { targetUserId?: string };
+  if (!targetUserId || typeof targetUserId !== "string") {
+    throw new functions.https.HttpsError("invalid-argument", "Missing targetUserId.");
+  }
+
+  const edgeRef = db.collection("follows").doc(followEdgeDocId(followerId, targetUserId));
+
+  await db.runTransaction(async (t) => {
+    const edgeDoc = await t.get(edgeRef);
+    if (!edgeDoc.exists) {
+      return;
+    }
+
+    t.delete(edgeRef);
+    t.set(
+      db.collection("users").doc(followerId),
+      {
+        followingCount: FieldValue.increment(-1),
+      },
+      { merge: true },
+    );
+    t.set(
+      db.collection("users").doc(targetUserId),
+      {
+        followersCount: FieldValue.increment(-1),
+      },
+      { merge: true },
+    );
+  });
+
+  return { success: true };
+});
 
 const processPostDirect = async (postId: string): Promise<void> => {
   if (typeof postId !== "string" || postId.trim().length === 0) {

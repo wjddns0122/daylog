@@ -61,6 +61,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           onPressed: () => context.push('/notifications'),
         ),
         IconButton(
+          icon: const Icon(Icons.person_search_outlined, color: Colors.black),
+          onPressed: () => context.push('/search-users'),
+        ),
+        IconButton(
           icon: const Icon(Icons.settings_outlined, color: Colors.black),
           onPressed: () => context.push('/settings'),
         ),

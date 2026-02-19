@@ -14,6 +14,9 @@ import 'package:daylog/features/settings/presentation/screens/settings_screen.da
 import 'package:daylog/features/settings/presentation/screens/change_password_screen.dart';
 import 'package:daylog/features/calendar/presentation/screens/calendar_screen.dart'; // Added
 import 'package:daylog/features/likes/presentation/screens/like_screen.dart'; // Added
+import 'package:daylog/features/social/presentation/screens/follow_list_screen.dart';
+import 'package:daylog/features/social/presentation/screens/follow_requests_screen.dart';
+import 'package:daylog/features/social/presentation/screens/user_search_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -134,6 +137,39 @@ GoRouter router(Ref ref) {
         path: '/notifications',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const NotificationScreen(),
+      ),
+      GoRoute(
+        path: '/search-users',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const UserSearchScreen(),
+      ),
+      GoRoute(
+        path: '/follow-requests',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const FollowRequestsScreen(),
+      ),
+      GoRoute(
+        path: '/profile/followers',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            const FollowListScreen(type: FollowListType.followers),
+      ),
+      GoRoute(
+        path: '/profile/following',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            const FollowListScreen(type: FollowListType.following),
+      ),
+      GoRoute(
+        path: '/users/:uid',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final uid = state.pathParameters['uid'];
+          if (uid == null || uid.isEmpty) {
+            return const ProfileScreen();
+          }
+          return ProfileScreen(userId: uid);
+        },
       ),
     ],
   );

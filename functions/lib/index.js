@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.repairWorker = exports.processPost = exports.createPostIntent = exports.suggestMoodKeywords = void 0;
+exports.repairWorker = exports.processPost = exports.unfollowUser = exports.rejectFollowRequest = exports.acceptFollowRequest = exports.cancelFollowRequest = exports.sendFollowRequest = exports.createPostIntent = exports.suggestMoodKeywords = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const functions_1 = require("firebase-admin/functions");
@@ -24,6 +24,18 @@ const enqueueProcessPost = async (postId, scheduleDelaySeconds) => {
     await (0, functions_1.getFunctions)()
         .taskQueue("processPost")
         .enqueue({ postId }, { scheduleDelaySeconds });
+};
+const followEdgeDocId = (followerId, followingId) => `${followerId}_${followingId}`;
+const createNotification = async (userId, type, title, message, payload) => {
+    await db.collection("notifications").add({
+        userId,
+        type,
+        title,
+        message,
+        isRead: false,
+        payload,
+        createdAt: firestore_1.FieldValue.serverTimestamp(),
+    });
 };
 const sendReleaseNotification = async (userId, postId) => {
     await db.collection("notifications").add({
@@ -146,6 +158,184 @@ exports.createPostIntent = functions.https.onCall(async (data, context) => {
         console.error("createPostIntent failed:", error);
         throw new functions.https.HttpsError("internal", "Transaction failed");
     }
+});
+exports.sendFollowRequest = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+    }
+    const requesterId = context.auth.uid;
+    const { targetUserId } = data;
+    if (!targetUserId || typeof targetUserId !== "string") {
+        throw new functions.https.HttpsError("invalid-argument", "Missing targetUserId.");
+    }
+    if (targetUserId === requesterId) {
+        throw new functions.https.HttpsError("invalid-argument", "Cannot follow yourself.");
+    }
+    const edgeRef = db.collection("follows").doc(followEdgeDocId(requesterId, targetUserId));
+    const requesterUserRef = db.collection("users").doc(requesterId);
+    const targetUserRef = db.collection("users").doc(targetUserId);
+    await db.runTransaction(async (t) => {
+        const existingEdge = await t.get(edgeRef);
+        if (existingEdge.exists) {
+            return;
+        }
+        t.set(edgeRef, {
+            followerId: requesterId,
+            followingId: targetUserId,
+            createdAt: firestore_1.FieldValue.serverTimestamp(),
+        });
+        t.set(requesterUserRef, {
+            followingCount: firestore_1.FieldValue.increment(1),
+        }, { merge: true });
+        t.set(targetUserRef, {
+            followersCount: firestore_1.FieldValue.increment(1),
+        }, { merge: true });
+    });
+    await createNotification(targetUserId, "follow_accepted", "새 팔로워", "새로운 사용자가 회원님을 팔로우합니다.", {
+        actorUserId: requesterId,
+        targetUserId,
+    });
+    return { success: true, status: "FOLLOWING_CREATED" };
+});
+exports.cancelFollowRequest = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+    }
+    const followerId = context.auth.uid;
+    const { targetUserId } = data;
+    if (!targetUserId || typeof targetUserId !== "string") {
+        throw new functions.https.HttpsError("invalid-argument", "Missing targetUserId.");
+    }
+    const edgeRef = db.collection("follows").doc(followEdgeDocId(followerId, targetUserId));
+    await db.runTransaction(async (t) => {
+        const edgeDoc = await t.get(edgeRef);
+        if (!edgeDoc.exists) {
+            return;
+        }
+        t.delete(edgeRef);
+        t.set(db.collection("users").doc(followerId), {
+            followingCount: firestore_1.FieldValue.increment(-1),
+        }, { merge: true });
+        t.set(db.collection("users").doc(targetUserId), {
+            followersCount: firestore_1.FieldValue.increment(-1),
+        }, { merge: true });
+    });
+    return { success: true };
+});
+exports.acceptFollowRequest = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+    }
+    const targetUserId = context.auth.uid;
+    const { requestId } = data;
+    if (!requestId || typeof requestId !== "string") {
+        throw new functions.https.HttpsError("invalid-argument", "Missing requestId.");
+    }
+    const requestRef = db.collection("follow_requests").doc(requestId);
+    let requesterId = "";
+    await db.runTransaction(async (t) => {
+        const requestDoc = await t.get(requestRef);
+        if (!requestDoc.exists) {
+            throw new functions.https.HttpsError("not-found", "Follow request not found.");
+        }
+        const request = requestDoc.data();
+        if (request.targetUserId !== targetUserId) {
+            throw new functions.https.HttpsError("permission-denied", "Not allowed.");
+        }
+        requesterId = request.requesterId;
+        if (request.status !== "PENDING") {
+            return;
+        }
+        const edgeRef = db.collection("follows").doc(followEdgeDocId(request.requesterId, targetUserId));
+        const requesterUserRef = db.collection("users").doc(request.requesterId);
+        const targetUserRef = db.collection("users").doc(targetUserId);
+        t.set(edgeRef, {
+            followerId: request.requesterId,
+            followingId: targetUserId,
+            createdAt: firestore_1.FieldValue.serverTimestamp(),
+        });
+        t.update(requestRef, {
+            status: "ACCEPTED",
+            updatedAt: firestore_1.FieldValue.serverTimestamp(),
+        });
+        t.set(requesterUserRef, {
+            followingCount: firestore_1.FieldValue.increment(1),
+        }, { merge: true });
+        t.set(targetUserRef, {
+            followersCount: firestore_1.FieldValue.increment(1),
+        }, { merge: true });
+    });
+    if (requesterId) {
+        await createNotification(requesterId, "follow_accepted", "팔로우 요청 수락됨", "당신의 팔로우 요청이 수락되었습니다.", {
+            requesterId,
+            targetUserId,
+            requestId,
+        });
+    }
+    return { success: true };
+});
+exports.rejectFollowRequest = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+    }
+    const targetUserId = context.auth.uid;
+    const { requestId } = data;
+    if (!requestId || typeof requestId !== "string") {
+        throw new functions.https.HttpsError("invalid-argument", "Missing requestId.");
+    }
+    const requestRef = db.collection("follow_requests").doc(requestId);
+    let requesterId = "";
+    await db.runTransaction(async (t) => {
+        const requestDoc = await t.get(requestRef);
+        if (!requestDoc.exists) {
+            throw new functions.https.HttpsError("not-found", "Follow request not found.");
+        }
+        const request = requestDoc.data();
+        if (request.targetUserId !== targetUserId) {
+            throw new functions.https.HttpsError("permission-denied", "Not allowed.");
+        }
+        requesterId = request.requesterId;
+        if (request.status !== "PENDING") {
+            return;
+        }
+        t.update(requestRef, {
+            status: "REJECTED",
+            updatedAt: firestore_1.FieldValue.serverTimestamp(),
+        });
+    });
+    if (requesterId) {
+        await createNotification(requesterId, "follow_rejected", "팔로우 요청 거절됨", "당신의 팔로우 요청이 거절되었습니다.", {
+            requesterId,
+            targetUserId,
+            requestId,
+        });
+    }
+    return { success: true };
+});
+exports.unfollowUser = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+    }
+    const followerId = context.auth.uid;
+    const { targetUserId } = data;
+    if (!targetUserId || typeof targetUserId !== "string") {
+        throw new functions.https.HttpsError("invalid-argument", "Missing targetUserId.");
+    }
+    const edgeRef = db.collection("follows").doc(followEdgeDocId(followerId, targetUserId));
+    await db.runTransaction(async (t) => {
+        const edgeDoc = await t.get(edgeRef);
+        if (!edgeDoc.exists) {
+            return;
+        }
+        t.delete(edgeRef);
+        t.set(db.collection("users").doc(followerId), {
+            followingCount: firestore_1.FieldValue.increment(-1),
+        }, { merge: true });
+        t.set(db.collection("users").doc(targetUserId), {
+            followersCount: firestore_1.FieldValue.increment(-1),
+        }, { merge: true });
+    });
+    return { success: true };
 });
 const processPostDirect = async (postId) => {
     if (typeof postId !== "string" || postId.trim().length === 0) {

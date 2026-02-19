@@ -114,6 +114,15 @@ class NotificationScreen extends HookConsumerWidget {
         break;
       case NotificationType.like:
       case NotificationType.comment:
+      case NotificationType.followAccepted:
+        context.go('/profile/followers');
+        break;
+      case NotificationType.followRequest:
+        context.push('/follow-requests');
+        break;
+      case NotificationType.followRejected:
+        context.go('/search-users');
+        break;
       case NotificationType.system:
         context.go('/');
         break;
@@ -134,12 +143,18 @@ class _NotificationTile extends StatelessWidget {
       NotificationType.like => Icons.favorite_rounded,
       NotificationType.comment => Icons.chat_bubble_rounded,
       NotificationType.filmDeveloped => Icons.auto_awesome_rounded,
+      NotificationType.followRequest => Icons.person_add_alt_1_rounded,
+      NotificationType.followAccepted => Icons.how_to_reg_rounded,
+      NotificationType.followRejected => Icons.person_off_rounded,
       NotificationType.system => Icons.notifications_rounded,
     };
     final iconColor = switch (notification.type) {
       NotificationType.like => const Color(0xFFE06767),
       NotificationType.comment => const Color(0xFF567D9A),
       NotificationType.filmDeveloped => const Color(0xFF8C7A5B),
+      NotificationType.followRequest => const Color(0xFF4D6B8A),
+      NotificationType.followAccepted => const Color(0xFF3E8A5A),
+      NotificationType.followRejected => const Color(0xFF8A5A3E),
       NotificationType.system => const Color(0xFF616161),
     };
 
@@ -262,7 +277,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'When your film is developed or someone likes your photo, it will show up here.',
+              'When social activity or film updates happen, notifications will show up here.',
               textAlign: TextAlign.center,
               style: GoogleFonts.lora(
                 color: const Color(0xFF7A7A7A),

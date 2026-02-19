@@ -1,6 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum NotificationType { like, comment, filmDeveloped, system }
+enum NotificationType {
+  like,
+  comment,
+  filmDeveloped,
+  followRequest,
+  followAccepted,
+  followRejected,
+  system,
+}
 
 class NotificationEntity {
   NotificationEntity({
@@ -37,6 +45,23 @@ class NotificationEntity {
     final dynamic candidate = payloadData['postId'] ??
         payloadData['relatedPostId'] ??
         payloadData['targetPostId'];
+
+    if (candidate is String && candidate.trim().isNotEmpty) {
+      return candidate.trim();
+    }
+
+    return null;
+  }
+
+  String? get relatedUserId {
+    final payloadData = payload;
+    if (payloadData == null) {
+      return null;
+    }
+
+    final dynamic candidate = payloadData['actorUserId'] ??
+        payloadData['requesterId'] ??
+        payloadData['targetUserId'];
 
     if (candidate is String && candidate.trim().isNotEmpty) {
       return candidate.trim();
@@ -89,6 +114,16 @@ class NotificationEntity {
       case 'filmdeveloped':
       case 'developed':
         return NotificationType.filmDeveloped;
+      case 'follow_request':
+      case 'follow_request_sent':
+      case 'followrequest':
+        return NotificationType.followRequest;
+      case 'follow_accepted':
+      case 'follow_accept':
+        return NotificationType.followAccepted;
+      case 'follow_rejected':
+      case 'follow_reject':
+        return NotificationType.followRejected;
       default:
         return NotificationType.system;
     }

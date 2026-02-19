@@ -33,6 +33,22 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final doc = await _firestore.collection('users').doc(user.uid).get();
       if (doc.exists) {
+        final data = doc.data();
+        // Auto-patch missing search fields for legacy user docs
+        if (data != null && !data.containsKey('nicknameLower')) {
+          try {
+            final nickname = data['nickname'] as String? ??
+                data['displayName'] as String? ??
+                '';
+            final displayName = data['displayName'] as String? ?? '';
+            await _firestore.collection('users').doc(user.uid).update({
+              'nicknameLower': nickname.toLowerCase(),
+              'displayNameLower': displayName.toLowerCase(),
+            });
+          } catch (_) {
+            // Non-critical: search might not work for this user yet
+          }
+        }
         return UserModel.fromDocument(doc);
       }
 
@@ -52,6 +68,8 @@ class AuthRepositoryImpl implements AuthRepository {
       try {
         await _firestore.collection('users').doc(user.uid).set({
           ...newUser.toJson(),
+          'nicknameLower': (newUser.nickname ?? '').toLowerCase(),
+          'displayNameLower': newUser.displayName.toLowerCase(),
           'loginMethod': 'unknown',
           'createdAt': FieldValue.serverTimestamp(),
         });
@@ -95,6 +113,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
       await _firestore.collection('users').doc(user.uid).set({
         ...newUser.toJson(),
+        'nicknameLower': (newUser.nickname ?? '').toLowerCase(),
+        'displayNameLower': newUser.displayName.toLowerCase(),
         'loginMethod': 'email',
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -133,6 +153,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
       await _firestore.collection('users').doc(user.uid).set({
         ...newUser.toJson(),
+        'nicknameLower': nickname.toLowerCase(),
+        'displayNameLower': name.toLowerCase(),
         'name':
             name, // Store real name explicitly if needed, or rely on internal logic
         'loginMethod': 'email',
@@ -197,20 +219,19 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final kakaoUser = await kakao.UserApi.instance.me();
 
-      // NOTE: strict Firebase integration requires Custom Token here.
-      // For now, we will just sync to Firestore and return a defined User
-      // CAUTION: FirebaseAuth will NOT be signed in for Kakao without Custom Token.
-      // This might limit functionality if rules require request.auth.
+      final firebaseUser = _firebaseAuth.currentUser ??
+          (await _firebaseAuth.signInAnonymously()).user;
+      if (firebaseUser == null) {
+        throw FirebaseAuthException(
+          code: 'internal-error',
+          message: 'Could not establish Firebase session for Kakao login.',
+        );
+      }
 
-      final uid = 'kakao:${kakaoUser.id}';
+      final uid = firebaseUser.uid;
       final email = kakaoUser.kakaoAccount?.email ?? '';
       final nickname = kakaoUser.kakaoAccount?.profile?.nickname;
       final photoUrl = kakaoUser.kakaoAccount?.profile?.thumbnailImageUrl;
-
-      // We might want to create an anonymous firebase user and link?
-      // Or just proceed. For strict adherence to "Hybrid Social",
-      // we assume a solution exists or will be added.
-      // Current path: Sync to Firestore directly.
 
       return await _syncUserToFirestore(
         uid: uid,
@@ -246,6 +267,8 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       await userRef.set({
         ...newUser.toJson(),
+        'nicknameLower': (newUser.nickname ?? '').toLowerCase(),
+        'displayNameLower': newUser.displayName.toLowerCase(),
         'loginMethod': loginMethod,
         'createdAt': FieldValue.serverTimestamp(),
       });

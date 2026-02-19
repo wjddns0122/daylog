@@ -4,11 +4,8 @@ import '../../data/repositories/notification_repository_impl.dart';
 import '../../domain/entities/notification_entity.dart';
 import '../../domain/repositories/notification_repository.dart';
 
-final notificationUseMockDataProvider = Provider<bool>((ref) => false);
-
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
-  final useMockData = ref.watch(notificationUseMockDataProvider);
-  return NotificationRepositoryImpl(useMockData: useMockData);
+  return NotificationRepositoryImpl();
 });
 
 final notificationsProvider = StreamProvider<List<NotificationEntity>>((ref) {
