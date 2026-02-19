@@ -319,6 +319,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> completeProfileSetup({
     required String nickname,
+    required String bio,
     String? profileImagePath,
   }) async {
     final user = _firebaseAuth.currentUser;
@@ -330,10 +331,17 @@ class AuthRepositoryImpl implements AuthRepository {
     }
 
     final trimmedNickname = nickname.trim();
+    final trimmedBio = bio.trim();
     if (trimmedNickname.isEmpty) {
       throw FirebaseAuthException(
         code: 'invalid-display-name',
         message: 'Nickname is required.',
+      );
+    }
+    if (trimmedBio.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'invalid-argument',
+        message: 'Bio is required.',
       );
     }
 
@@ -347,6 +355,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
     await _firestore.collection('users').doc(user.uid).set({
       'nickname': trimmedNickname,
+      'bio': trimmedBio,
       'nicknameLower': trimmedNickname.toLowerCase(),
       'photoUrl': photoUrl,
       'profileSetupCompleted': true,

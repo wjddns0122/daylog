@@ -103,10 +103,12 @@ class AuthViewModel extends _$AuthViewModel {
 
   Future<void> completeProfileSetup({
     required String nickname,
+    required String bio,
     String? profileImagePath,
   }) {
     return ref.read(authRepositoryProvider).completeProfileSetup(
           nickname: nickname,
+          bio: bio,
           profileImagePath: profileImagePath,
         );
   }

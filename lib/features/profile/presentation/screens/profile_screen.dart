@@ -156,8 +156,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: ProfileHeader(
                 handle: user.nickname ?? '', // Assuming Handle is Nickname
                 avatarUrl: user.photoUrl,
-                bio:
-                    '반가워요! 방문 감사합니다! :0', // Placeholder or add 'bio' to UserModel
+                bio: (user.bio == null || user.bio!.trim().isEmpty)
+                    ? '한 줄 소개가 아직 없어요.'
+                    : user.bio!,
                 joinDate: formattedDate,
                 postCount: profileState.posts.length,
                 followerCount: followerCount,

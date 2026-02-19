@@ -25,6 +25,7 @@ mixin _$UserModel {
   String get displayName => throw _privateConstructorUsedError;
   bool get isVerified => throw _privateConstructorUsedError;
   String? get nickname => throw _privateConstructorUsedError;
+  String? get bio => throw _privateConstructorUsedError;
   String? get photoUrl => throw _privateConstructorUsedError;
   bool get profileSetupCompleted => throw _privateConstructorUsedError;
   int get followersCount => throw _privateConstructorUsedError;
@@ -53,6 +54,7 @@ abstract class $UserModelCopyWith<$Res> {
       String displayName,
       bool isVerified,
       String? nickname,
+      String? bio,
       String? photoUrl,
       bool profileSetupCompleted,
       int followersCount,
@@ -80,6 +82,7 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
     Object? displayName = null,
     Object? isVerified = null,
     Object? nickname = freezed,
+    Object? bio = freezed,
     Object? photoUrl = freezed,
     Object? profileSetupCompleted = null,
     Object? followersCount = null,
@@ -106,6 +109,10 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
       nickname: freezed == nickname
           ? _value.nickname
           : nickname // ignore: cast_nullable_to_non_nullable
+              as String?,
+      bio: freezed == bio
+          ? _value.bio
+          : bio // ignore: cast_nullable_to_non_nullable
               as String?,
       photoUrl: freezed == photoUrl
           ? _value.photoUrl
@@ -145,6 +152,7 @@ abstract class _$$UserModelImplCopyWith<$Res>
       String displayName,
       bool isVerified,
       String? nickname,
+      String? bio,
       String? photoUrl,
       bool profileSetupCompleted,
       int followersCount,
@@ -170,6 +178,7 @@ class __$$UserModelImplCopyWithImpl<$Res>
     Object? displayName = null,
     Object? isVerified = null,
     Object? nickname = freezed,
+    Object? bio = freezed,
     Object? photoUrl = freezed,
     Object? profileSetupCompleted = null,
     Object? followersCount = null,
@@ -196,6 +205,10 @@ class __$$UserModelImplCopyWithImpl<$Res>
       nickname: freezed == nickname
           ? _value.nickname
           : nickname // ignore: cast_nullable_to_non_nullable
+              as String?,
+      bio: freezed == bio
+          ? _value.bio
+          : bio // ignore: cast_nullable_to_non_nullable
               as String?,
       photoUrl: freezed == photoUrl
           ? _value.photoUrl
@@ -230,6 +243,7 @@ class _$UserModelImpl implements _UserModel {
       required this.displayName,
       this.isVerified = false,
       this.nickname,
+      this.bio,
       this.photoUrl,
       this.profileSetupCompleted = true,
       this.followersCount = 0,
@@ -251,6 +265,8 @@ class _$UserModelImpl implements _UserModel {
   @override
   final String? nickname;
   @override
+  final String? bio;
+  @override
   final String? photoUrl;
   @override
   @JsonKey()
@@ -267,7 +283,7 @@ class _$UserModelImpl implements _UserModel {
 
   @override
   String toString() {
-    return 'UserModel(uid: $uid, email: $email, displayName: $displayName, isVerified: $isVerified, nickname: $nickname, photoUrl: $photoUrl, profileSetupCompleted: $profileSetupCompleted, followersCount: $followersCount, followingCount: $followingCount, createdAt: $createdAt)';
+    return 'UserModel(uid: $uid, email: $email, displayName: $displayName, isVerified: $isVerified, nickname: $nickname, bio: $bio, photoUrl: $photoUrl, profileSetupCompleted: $profileSetupCompleted, followersCount: $followersCount, followingCount: $followingCount, createdAt: $createdAt)';
   }
 
   @override
@@ -283,6 +299,7 @@ class _$UserModelImpl implements _UserModel {
                 other.isVerified == isVerified) &&
             (identical(other.nickname, nickname) ||
                 other.nickname == nickname) &&
+            (identical(other.bio, bio) || other.bio == bio) &&
             (identical(other.photoUrl, photoUrl) ||
                 other.photoUrl == photoUrl) &&
             (identical(other.profileSetupCompleted, profileSetupCompleted) ||
@@ -304,6 +321,7 @@ class _$UserModelImpl implements _UserModel {
       displayName,
       isVerified,
       nickname,
+      bio,
       photoUrl,
       profileSetupCompleted,
       followersCount,
@@ -333,6 +351,7 @@ abstract class _UserModel implements UserModel {
       required final String displayName,
       final bool isVerified,
       final String? nickname,
+      final String? bio,
       final String? photoUrl,
       final bool profileSetupCompleted,
       final int followersCount,
@@ -352,6 +371,8 @@ abstract class _UserModel implements UserModel {
   bool get isVerified;
   @override
   String? get nickname;
+  @override
+  String? get bio;
   @override
   String? get photoUrl;
   @override

@@ -19,6 +19,7 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
 
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _nicknameController = TextEditingController();
+  final _bioController = TextEditingController();
   int _step = 0;
   bool _isSubmitting = false;
   String? _imagePath;
@@ -35,6 +36,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   @override
   void dispose() {
     _nicknameController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
@@ -67,13 +69,32 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     });
   }
 
+  void _goToBioStep() {
+    setState(() {
+      _step = 2;
+    });
+  }
+
   Future<void> _completeSetup() async {
     if (_isSubmitting) return;
 
     final nickname = _nicknameController.text.trim();
+    final bio = _bioController.text.trim();
     if (nickname.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('닉네임을 입력해주세요.')),
+      );
+      return;
+    }
+    if (bio.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('한 줄 소개를 입력해주세요.')),
+      );
+      return;
+    }
+    if (bio.length > 60) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('한 줄 소개는 60자 이내로 입력해주세요.')),
       );
       return;
     }
@@ -85,6 +106,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     try {
       await ref.read(authViewModelProvider.notifier).completeProfileSetup(
             nickname: nickname,
+            bio: bio,
             profileImagePath: _imagePath,
           );
 
@@ -113,20 +135,28 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
     return AuthScaffold(
       children: [
-        if (_step == 1)
+        if (_step > 0)
           IconButton(
             icon: const Icon(Icons.arrow_back_ios_new, size: 22),
             onPressed: () {
               setState(() {
-                _step = 0;
+                _step = _step - 1;
               });
             },
           )
         else
           const SizedBox(height: 48),
         AuthHeader(
-          title: _step == 0 ? '닉네임 설정' : '프로필 사진 설정',
-          subtitle: _step == 0 ? '닉네임부터 설정해주세요.' : '원하는 프로필 이미지를 등록해보세요.',
+          title: _step == 0
+              ? '닉네임 설정'
+              : _step == 1
+                  ? '프로필 사진 설정'
+                  : '한 줄 소개 작성',
+          subtitle: _step == 0
+              ? '닉네임부터 설정해주세요.'
+              : _step == 1
+                  ? '원하는 프로필 이미지를 등록해보세요.'
+                  : '마지막으로 나를 소개하는 한 줄을 적어주세요.',
         ),
         const Spacer(),
         if (_step == 0) ...[
@@ -140,7 +170,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             text: '다음',
             onTap: _goToPhotoStep,
           ),
-        ] else ...[
+        ] else if (_step == 1) ...[
           GestureDetector(
             onTap: _pickProfileImage,
             child: Container(
@@ -169,14 +199,44 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           ),
           const SizedBox(height: 8),
           AuthButton(
-            text: '완료',
-            isLoading: _isSubmitting,
-            onTap: _completeSetup,
+            text: '다음',
+            onTap: _goToBioStep,
           ),
           const SizedBox(height: 10),
           TextButton(
-            onPressed: _isSubmitting ? null : _completeSetup,
+            onPressed: _goToBioStep,
             child: const Text('지금은 건너뛰기'),
+          ),
+        ] else ...[
+          AuthTextField(
+            controller: _bioController,
+            hintText: '한 줄 소개를 입력해주세요',
+            prefixIcon: Icons.edit_note_rounded,
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _bioController,
+              builder: (context, value, _) {
+                final length = value.text.trim().length;
+                return Text(
+                  '$length/60',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: length > 60
+                            ? Colors.redAccent
+                            : AppTheme.authTextGray,
+                        fontSize: 12,
+                      ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          AuthButton(
+            text: '완료',
+            isLoading: _isSubmitting,
+            onTap: _completeSetup,
           ),
         ],
         const Spacer(flex: 2),

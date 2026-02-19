@@ -12,6 +12,7 @@ class UserModel with _$UserModel {
     required String displayName,
     @Default(false) bool isVerified,
     String? nickname,
+    String? bio,
     String? photoUrl,
     @Default(true) bool profileSetupCompleted,
     @Default(0) int followersCount,
