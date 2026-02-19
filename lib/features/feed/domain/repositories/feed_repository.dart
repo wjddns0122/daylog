@@ -14,6 +14,8 @@ abstract class FeedRepository {
   /// Get pending post for the current user
   Stream<FeedEntity?> getMyPendingPost(String userId);
 
+  Future<FeedEntity?> getPostById(String postId);
+
   Future<void> deletePost(String postId, String imageUrl);
   Future<void> toggleLike(String postId, String userId, bool isLiked);
   Future<void> updatePostCaption(String postId, String newCaption);

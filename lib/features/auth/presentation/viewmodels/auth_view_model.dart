@@ -84,4 +84,20 @@ class AuthViewModel extends _$AuthViewModel {
       state = AsyncValue.error(e, st);
     }
   }
+
+  Future<void> sendPasswordResetEmail({required String email}) {
+    return ref
+        .read(authRepositoryProvider)
+        .sendPasswordResetEmail(email: email);
+  }
+
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return ref.read(authRepositoryProvider).updatePassword(
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        );
+  }
 }

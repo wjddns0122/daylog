@@ -1,19 +1,19 @@
 import 'package:daylog/core/theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:daylog/features/notification/presentation/providers/notification_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-
-final pushNotificationEnabledProvider = StateProvider<bool>((ref) => true);
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends HookConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isPushEnabled = ref.watch(pushNotificationEnabledProvider);
+    final pushEnabledAsync = ref.watch(pushEnabledProvider);
     final isBusy = useState(false);
     final currentUser = FirebaseAuth.instance.currentUser;
 
@@ -39,10 +39,23 @@ class SettingsScreen extends HookConsumerWidget {
       }
     }
 
-    void showDummyNotice(String title) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$title is coming soon.')),
-      );
+    Future<void> launchExternalUrl(String urlString) async {
+      try {
+        final uri = Uri.parse(urlString);
+        if (!await launchUrl(uri)) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Could not open link.')),
+            );
+          }
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid link.')),
+          );
+        }
+      }
     }
 
     final titleStyle = GoogleFonts.lora(
@@ -98,10 +111,10 @@ class SettingsScreen extends HookConsumerWidget {
                 _SettingsItem(
                   icon: Icons.password_rounded,
                   title: 'Change Password',
-                  subtitle: 'Not available yet',
+                  subtitle: 'Update your password',
                   titleStyle: itemTitleStyle,
                   subtitleStyle: itemSubtitleStyle,
-                  onTap: () => showDummyNotice('Change Password'),
+                  onTap: () => context.push('/change-password'),
                 ),
               ],
             ),
@@ -122,17 +135,35 @@ class SettingsScreen extends HookConsumerWidget {
                   ),
                   title: Text('Push Notifications', style: itemTitleStyle),
                   subtitle: Text(
-                    isPushEnabled ? 'Enabled' : 'Disabled',
+                    pushEnabledAsync.when(
+                      data: (enabled) => enabled ? 'Enabled' : 'Disabled',
+                      loading: () => 'Loading...',
+                      error: (_, __) => 'Could not load preference',
+                    ),
                     style: itemSubtitleStyle,
                   ),
-                  value: isPushEnabled,
+                  value: pushEnabledAsync.valueOrNull ?? true,
                   activeThumbColor: AppTheme.primaryColor,
                   activeTrackColor:
                       AppTheme.primaryColor.withValues(alpha: 0.3),
-                  onChanged: (value) {
-                    ref.read(pushNotificationEnabledProvider.notifier).state =
-                        value;
-                  },
+                  onChanged: pushEnabledAsync.isLoading
+                      ? null
+                      : (value) async {
+                          await ref
+                              .read(pushEnabledProvider.notifier)
+                              .setPushEnabled(value);
+
+                          final updated = ref.read(pushEnabledProvider);
+                          if (updated.hasError && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Could not update push preference.',
+                                ),
+                              ),
+                            );
+                          }
+                        },
                 ),
               ],
             ),
@@ -154,7 +185,7 @@ class SettingsScreen extends HookConsumerWidget {
                   subtitle: 'Read terms and conditions',
                   titleStyle: itemTitleStyle,
                   subtitleStyle: itemSubtitleStyle,
-                  onTap: () => showDummyNotice('Terms'),
+                  onTap: () => launchExternalUrl('https://example.com/terms'),
                 ),
                 _SettingsItem(
                   icon: Icons.privacy_tip_outlined,
@@ -162,7 +193,7 @@ class SettingsScreen extends HookConsumerWidget {
                   subtitle: 'Read privacy policy',
                   titleStyle: itemTitleStyle,
                   subtitleStyle: itemSubtitleStyle,
-                  onTap: () => showDummyNotice('Privacy'),
+                  onTap: () => launchExternalUrl('https://example.com/privacy'),
                 ),
               ],
             ),

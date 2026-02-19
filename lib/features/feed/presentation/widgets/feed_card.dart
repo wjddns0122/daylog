@@ -15,7 +15,12 @@ class FeedCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = FirebaseAuth.instance.currentUser;
+    User? user;
+    try {
+      user = FirebaseAuth.instance.currentUser;
+    } catch (_) {
+      user = null;
+    }
     final isLiked = user != null && item.isLiked(user.uid);
 
     return Container(
@@ -47,8 +52,7 @@ class FeedCard extends ConsumerWidget {
                       const CircleAvatar(
                         radius: 18,
                         backgroundColor: Colors.grey,
-                        backgroundImage:
-                            NetworkImage('https://i.pravatar.cc/150'),
+                        child: Icon(Icons.person, color: Colors.white),
                       ),
                       const SizedBox(width: 12),
                       Column(
@@ -142,16 +146,26 @@ class FeedCard extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Icon(
-                  Icons.chat_bubble_outline,
-                  size: 26,
-                  color: Colors.black87,
+                IconButton(
+                  tooltip: 'Comments (coming soon)',
+                  onPressed: () =>
+                      _showFeatureNotice(context, 'Comments are coming soon.'),
+                  icon: const Icon(
+                    Icons.chat_bubble_outline,
+                    size: 26,
+                    color: Colors.black87,
+                  ),
                 ),
                 const Spacer(),
-                const Icon(
-                  Icons.bookmark_border,
-                  size: 28,
-                  color: Colors.black87,
+                IconButton(
+                  tooltip: 'Bookmark (coming soon)',
+                  onPressed: () =>
+                      _showFeatureNotice(context, 'Bookmarks are coming soon.'),
+                  icon: const Icon(
+                    Icons.bookmark_border,
+                    size: 28,
+                    color: Colors.black87,
+                  ),
                 ),
               ],
             ),
@@ -187,6 +201,11 @@ class FeedCard extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _showFeatureNotice(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _confirmDelete(

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -190,7 +189,7 @@ class ComposeScreen extends HookConsumerWidget {
                       fontSize: 13,
                     ),
                   ),
-                  activeColor: const Color(0xFF333333),
+                  activeTrackColor: const Color(0xFF333333),
                 ),
               ),
             ),

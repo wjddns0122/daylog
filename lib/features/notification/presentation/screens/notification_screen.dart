@@ -1,6 +1,6 @@
 import 'package:daylog/core/theme/app_theme.dart';
 import 'package:daylog/features/camera/presentation/screens/result_screen.dart';
-import 'package:daylog/features/feed/domain/entities/feed_entity.dart';
+import 'package:daylog/features/feed/presentation/providers/feed_provider.dart';
 import 'package:daylog/features/notification/domain/entities/notification_entity.dart';
 import 'package:daylog/features/notification/presentation/providers/notification_provider.dart';
 import 'package:flutter/material.dart';
@@ -54,7 +54,7 @@ class NotificationScreen extends HookConsumerWidget {
               final item = notifications[index];
               return _NotificationTile(
                 notification: item,
-                onTap: () => _handleTap(context, item),
+                onTap: () => _handleTap(context, ref, item),
               );
             },
           );
@@ -77,12 +77,38 @@ class NotificationScreen extends HookConsumerWidget {
     );
   }
 
-  void _handleTap(BuildContext context, NotificationEntity item) {
+  Future<void> _handleTap(
+    BuildContext context,
+    WidgetRef ref,
+    NotificationEntity item,
+  ) async {
     switch (item.type) {
       case NotificationType.filmDeveloped:
+        final relatedPostId = item.relatedPostId;
+        if (relatedPostId == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Post not found.')),
+          );
+          return;
+        }
+
+        final post = await ref.read(feedRepositoryProvider).getPostById(
+              relatedPostId,
+            );
+        if (!context.mounted) {
+          return;
+        }
+
+        if (post == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Post not found.')),
+          );
+          return;
+        }
+
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => ResultScreen(post: _fallbackPost),
+            builder: (_) => ResultScreen(post: post),
           ),
         );
         break;
@@ -250,11 +276,3 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
-
-final FeedEntity _fallbackPost = FeedEntity(
-  id: 'notification-preview-post',
-  url: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df',
-  content: 'A gentle evening light settled over the day.',
-  timestamp: DateTime.now(),
-  status: 'RELEASED',
-);

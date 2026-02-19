@@ -25,10 +25,16 @@ const enqueueProcessPost = async (postId, scheduleDelaySeconds) => {
         .taskQueue("processPost")
         .enqueue({ postId }, { scheduleDelaySeconds });
 };
-const sendReleaseNotificationPlaceholder = async (userId, postId) => {
-    console.info("FCM placeholder: send RELEASED notification", {
+const sendReleaseNotification = async (userId, postId) => {
+    await db.collection("notifications").add({
         userId,
         postId,
+        type: "filmDeveloped",
+        isRead: false,
+        createdAt: firestore_1.FieldValue.serverTimestamp(),
+        payload: {
+            relatedPostId: postId,
+        },
     });
 };
 exports.createPostIntent = functions.https.onCall(async (data, context) => {
@@ -182,7 +188,7 @@ const processPostDirect = async (postId) => {
                 leaseExpiresAt: firestore_1.FieldValue.delete(),
             });
         });
-        await sendReleaseNotificationPlaceholder(authorId, postId);
+        await sendReleaseNotification(authorId, postId);
     }
     catch (error) {
         console.error("processPostDirect failed:", { postId, error });

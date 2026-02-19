@@ -3,13 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../features/calendar/presentation/screens/calendar_screen.dart';
-import '../../../../features/likes/presentation/screens/like_screen.dart';
-import 'package:marquee/marquee.dart';
+import 'package:marquee/marquee.dart'; // Restored
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../camera/presentation/screens/camera_screen.dart';
-import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../camera/presentation/widgets/developing_card.dart';
 import '../providers/feed_provider.dart';
 import '../widgets/feed_card.dart';
@@ -23,16 +19,7 @@ class FeedScreen extends ConsumerStatefulWidget {
 }
 
 class _FeedScreenState extends ConsumerState<FeedScreen> {
-  int _currentIndex = 0;
   bool _isGridMode = false;
-
-  final List<Widget> _screens = [
-    const SizedBox.shrink(), // Index 0 handled by CustomScrollView
-    const CalendarScreen(),
-    const CameraScreen(),
-    const LikeScreen(),
-    const ProfileScreen(),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -40,64 +27,14 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       backgroundColor: AppTheme.backgroundColor,
       body: SafeArea(
         bottom: false,
-        child: _currentIndex == 0
-            ? CustomScrollView(
-                slivers: [
-                  _buildSliverAppBar(),
-                  _buildAnimatedHeader(),
-                  _buildToggleBar(),
-                  _buildFeedSlivers(),
-                  const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
-                ],
-              )
-            : IndexedStack(index: _currentIndex, children: _screens),
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
+        child: CustomScrollView(
+          slivers: [
+            _buildSliverAppBar(),
+            _buildAnimatedHeader(),
+            _buildToggleBar(),
+            _buildFeedSlivers(),
+            const SliverPadding(padding: EdgeInsets.only(bottom: 20)),
           ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildNavItem(
-                  icon: Icons.people_alt_rounded,
-                  label: 'Community',
-                  index: 0,
-                ),
-                _buildNavItem(
-                  icon: Icons.calendar_month_rounded,
-                  label: 'Calendar',
-                  index: 1,
-                ),
-                _buildNavItem(
-                  icon: Icons.add_rounded,
-                  label: '',
-                  index: 2,
-                  isFab: true,
-                ),
-                _buildNavItem(
-                  icon: Icons.favorite_rounded,
-                  label: 'Likes',
-                  index: 3,
-                ),
-                _buildNavItem(
-                  icon: Icons.person_rounded,
-                  label: 'Profile',
-                  index: 4,
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -259,63 +196,6 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           SliverToBoxAdapter(child: Center(child: Text('Error: $err'))),
       loading: () => const SliverToBoxAdapter(
         child: Center(child: CircularProgressIndicator()),
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required IconData icon,
-    required String label,
-    required int index,
-    bool isFab = false,
-  }) {
-    final isSelected = _currentIndex == index;
-    final color = isSelected ? AppTheme.primaryColor : Colors.grey;
-
-    if (isFab) {
-      return GestureDetector(
-        onTap: () {
-          setState(() => _currentIndex = index);
-        },
-        child: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: AppTheme.accentColor,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.accentColor.withValues(alpha: 0.4),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const Icon(Icons.add, color: Colors.white, size: 32),
-        ),
-      );
-    }
-
-    return GestureDetector(
-      onTap: () {
-        setState(() => _currentIndex = index);
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 28),
-          if (label.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }

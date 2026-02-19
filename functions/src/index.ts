@@ -39,13 +39,19 @@ const enqueueProcessPost = async (
     .enqueue({ postId }, { scheduleDelaySeconds });
 };
 
-const sendReleaseNotificationPlaceholder = async (
+const sendReleaseNotification = async (
   userId: string,
   postId: string,
 ): Promise<void> => {
-  console.info("FCM placeholder: send RELEASED notification", {
+  await db.collection("notifications").add({
     userId,
     postId,
+    type: "filmDeveloped",
+    isRead: false,
+    createdAt: FieldValue.serverTimestamp(),
+    payload: {
+      relatedPostId: postId,
+    },
   });
 };
 
@@ -265,7 +271,7 @@ const processPostDirect = async (postId: string): Promise<void> => {
       });
     });
 
-    await sendReleaseNotificationPlaceholder(authorId, postId);
+    await sendReleaseNotification(authorId, postId);
   } catch (error) {
     console.error("processPostDirect failed:", { postId, error });
 

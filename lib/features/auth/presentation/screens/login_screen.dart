@@ -5,6 +5,7 @@ import 'package:daylog/features/auth/presentation/widgets/auth_header.dart';
 import 'package:daylog/features/auth/presentation/widgets/auth_scaffold.dart';
 import 'package:daylog/features/auth/presentation/widgets/auth_social_section.dart';
 import 'package:daylog/features/auth/presentation/widgets/auth_text_field.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +21,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _isResetLoading = false;
 
   @override
   void dispose() {
@@ -43,6 +45,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: email,
           password: password,
         );
+  }
+
+  Future<void> _onForgotPassword() async {
+    if (_isResetLoading) return;
+
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('비밀번호 재설정을 위해 이메일을 입력해주세요.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isResetLoading = true;
+    });
+
+    try {
+      await ref
+          .read(authViewModelProvider.notifier)
+          .sendPasswordResetEmail(email: email);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('비밀번호 재설정 메일을 보냈어요. 메일함을 확인해주세요.')),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+
+      final message = switch (e.code) {
+        'invalid-email' => '이메일 형식이 올바르지 않아요.',
+        'user-not-found' => '해당 이메일로 가입된 계정을 찾을 수 없어요.',
+        _ => '비밀번호 재설정 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.',
+      };
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('비밀번호 재설정 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isResetLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -98,9 +149,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           alignment: Alignment.centerRight,
           child: Center(
             child: TextButton(
-              onPressed: () {},
+              onPressed: _isResetLoading ? null : _onForgotPassword,
               child: Text(
-                '비밀번호를 잊어버리셨나요?',
+                _isResetLoading ? '재설정 메일 전송 중...' : '비밀번호를 잊어버리셨나요?',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppTheme.authInputFill,
                       decoration: TextDecoration.underline,

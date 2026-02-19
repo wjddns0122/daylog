@@ -99,6 +99,16 @@ class FeedRepositoryImpl implements FeedRepository {
   }
 
   @override
+  Future<FeedEntity?> getPostById(String postId) async {
+    final doc = await _firestore.collection('posts').doc(postId).get();
+    if (!doc.exists) {
+      return null;
+    }
+
+    return FeedEntity.fromFirestore(doc);
+  }
+
+  @override
   Future<void> deletePost(String postId, String imageUrl) async {
     // 1. Delete from Firestore
     await _firestore.collection('posts').doc(postId).delete();

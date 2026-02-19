@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:marquee/marquee.dart';
@@ -115,12 +116,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       centerTitle: true,
       actions: [
         IconButton(
+          tooltip: 'Open notifications',
           icon: const Icon(Icons.notifications_outlined, color: Colors.black),
-          onPressed: () {},
+          onPressed: () => context.push('/notifications'),
         ),
         IconButton(
+          tooltip: 'Open settings',
           icon: const Icon(Icons.settings_outlined, color: Colors.black),
-          onPressed: () {},
+          onPressed: () => context.push('/settings'),
         ),
         const SizedBox(width: 8),
       ],
@@ -309,6 +312,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final totalCells = daysInMonth + weekdayOffset;
 
     return GridView.builder(
+      padding: EdgeInsets.zero,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -368,23 +372,29 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     required bool isSelected,
     required bool isToday,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.black87 : Colors.transparent,
-        shape: BoxShape.circle,
-        border: isToday && !isSelected
-            ? Border.all(color: Colors.black54, width: 1)
-            : null,
-      ),
-      child: Center(
-        child: Text(
-          '$day',
-          style: GoogleFonts.lora(
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? Colors.white : Colors.black54,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fontSize = constraints.maxWidth * 0.35;
+        return Container(
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.black87 : Colors.transparent,
+            shape: BoxShape.circle,
+            border: isToday && !isSelected
+                ? Border.all(color: Colors.black54, width: 1)
+                : null,
           ),
-        ),
-      ),
+          child: Center(
+            child: Text(
+              '$day',
+              style: GoogleFonts.lora(
+                fontSize: fontSize,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? Colors.white : Colors.black54,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -400,61 +410,80 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ? const Color(0xFF5B5B5B)
             : const Color(0xFFCBCBCB);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Container(color: const Color(0xFFD6D1C8)),
-          CachedNetworkImage(
-            imageUrl: post.url,
-            fit: BoxFit.cover,
-            placeholder: (_, __) => _buildThumbnailPlaceholder(day),
-            errorWidget: (_, __, ___) => _buildThumbnailPlaceholder(day),
-          ),
-          Container(color: const Color(0xFF4F4332).withValues(alpha: 0.14)),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: borderColor, width: isSelected ? 2 : 1),
-            ),
-          ),
-          Align(
-            alignment: Alignment.bottomRight,
-            child: Container(
-              margin: const EdgeInsets.all(3),
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.42),
-                borderRadius: BorderRadius.circular(8),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.maxWidth;
+        final dateFontSize = size * 0.25;
+        final dateBadgePaddingH = size * 0.1;
+        final dateBadgePaddingV = size * 0.05;
+        final dateBadgeMargin = size * 0.08;
+        final borderRadius = size * 0.25;
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Container(color: const Color(0xFFD6D1C8)),
+              CachedNetworkImage(
+                imageUrl: post.url,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => _buildThumbnailPlaceholder(day),
+                errorWidget: (_, __, ___) => _buildThumbnailPlaceholder(day),
               ),
-              child: Text(
-                '$day',
-                style: GoogleFonts.lora(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFFF2EEE8),
+              Container(color: const Color(0xFF4F4332).withValues(alpha: 0.14)),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  border:
+                      Border.all(color: borderColor, width: isSelected ? 2 : 1),
                 ),
               ),
-            ),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Container(
+                  margin: EdgeInsets.all(dateBadgeMargin),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: dateBadgePaddingH,
+                    vertical: dateBadgePaddingV,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.42),
+                    borderRadius: BorderRadius.circular(borderRadius * 0.6),
+                  ),
+                  child: Text(
+                    '$day',
+                    style: GoogleFonts.lora(
+                      fontSize: dateFontSize,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFF2EEE8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildThumbnailPlaceholder(int day) {
-    return Container(
-      color: const Color(0xFFC5BEB2),
-      alignment: Alignment.center,
-      child: Text(
-        '$day',
-        style: GoogleFonts.lora(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF625B51),
-        ),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          color: const Color(0xFFC5BEB2),
+          alignment: Alignment.center,
+          child: Text(
+            '$day',
+            style: GoogleFonts.lora(
+              fontSize: constraints.maxWidth * 0.35,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF625B51),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -466,7 +495,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 
   Future<void> _loadPostsForFocusedMonth() async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
+    String? userId;
+    try {
+      userId = FirebaseAuth.instance.currentUser?.uid;
+    } catch (_) {
+      userId = null;
+    }
     if (userId == null) {
       if (!mounted) {
         return;

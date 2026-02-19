@@ -224,6 +224,34 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'No authenticated user found.',
+      );
+    }
+    final email = user.email;
+    if (email == null || email.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'operation-not-allowed',
+        message: 'Password change is only available for email accounts.',
+      );
+    }
+
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: currentPassword,
+    );
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword);
+  }
+
+  @override
   Future<void> signOut() async {
     await Future.wait([
       _firebaseAuth.signOut(),
@@ -231,6 +259,11 @@ class AuthRepositoryImpl implements AuthRepository {
       // Kakao logout if needed
       // kakao.UserApi.instance.logout(),
     ]);
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    await _firebaseAuth.sendPasswordResetEmail(email: email);
   }
 }
 

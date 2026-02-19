@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/entities/notification_entity.dart';
 import '../../domain/repositories/notification_repository.dart';
@@ -8,13 +9,19 @@ class NotificationRepositoryImpl implements NotificationRepository {
   NotificationRepositoryImpl({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
-    this.useMockData = true,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+    this.useMockData = false,
+  })  : _firestore = firestore,
+        _auth = auth;
 
-  final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
+  final FirebaseFirestore? _firestore;
+  final FirebaseAuth? _auth;
   final bool useMockData;
+  static const String _pushEnabledKey = 'notification.push_enabled';
+
+  FirebaseFirestore get _resolvedFirestore =>
+      _firestore ?? FirebaseFirestore.instance;
+
+  FirebaseAuth get _resolvedAuth => _auth ?? FirebaseAuth.instance;
 
   @override
   Stream<List<NotificationEntity>> getNotifications() {
@@ -22,12 +29,12 @@ class NotificationRepositoryImpl implements NotificationRepository {
       return Stream.value(_mockNotifications);
     }
 
-    final user = _auth.currentUser;
+    final user = _resolvedAuth.currentUser;
     if (user == null) {
       return const Stream.empty();
     }
 
-    return _firestore
+    return _resolvedFirestore
         .collection('notifications')
         .where('userId', isEqualTo: user.uid)
         .orderBy('createdAt', descending: true)
@@ -45,12 +52,12 @@ class NotificationRepositoryImpl implements NotificationRepository {
       return;
     }
 
-    final user = _auth.currentUser;
+    final user = _resolvedAuth.currentUser;
     if (user == null) {
       return;
     }
 
-    final snapshot = await _firestore
+    final snapshot = await _resolvedFirestore
         .collection('notifications')
         .where('userId', isEqualTo: user.uid)
         .where('isRead', isEqualTo: false)
@@ -60,11 +67,23 @@ class NotificationRepositoryImpl implements NotificationRepository {
       return;
     }
 
-    final batch = _firestore.batch();
+    final batch = _resolvedFirestore.batch();
     for (final doc in snapshot.docs) {
       batch.update(doc.reference, {'isRead': true});
     }
     await batch.commit();
+  }
+
+  @override
+  Future<bool> getPushEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_pushEnabledKey) ?? true;
+  }
+
+  @override
+  Future<void> setPushEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_pushEnabledKey, enabled);
   }
 }
 

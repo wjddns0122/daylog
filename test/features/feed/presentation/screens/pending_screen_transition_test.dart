@@ -99,6 +99,11 @@ class _FakeFeedRepository implements FeedRepository {
       latestPostStream.map((post) => post?.status == 'PENDING' ? post : null);
 
   @override
+  Future<FeedEntity?> getPostById(String postId) async {
+    return null;
+  }
+
+  @override
   Future<void> deletePost(String postId, String imageUrl) async {}
 
   @override

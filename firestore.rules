@@ -42,5 +42,10 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, create, update: if true;
     }
+
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
   }
 }

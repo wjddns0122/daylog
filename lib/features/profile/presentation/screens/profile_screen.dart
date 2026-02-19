@@ -1,5 +1,6 @@
 import 'package:daylog/core/theme/app_theme.dart';
 import 'package:daylog/features/auth/presentation/viewmodels/auth_view_model.dart';
+import 'package:daylog/features/notification/presentation/providers/notification_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +16,7 @@ class ProfileScreen extends HookConsumerWidget {
     final user = authState.valueOrNull;
     final firebaseUser = FirebaseAuth.instance.currentUser;
     final isAnonymous = firebaseUser?.isAnonymous ?? false;
-    final isNotificationsOn = useState(true);
+    final pushEnabledAsync = ref.watch(pushEnabledProvider);
     final isBusy = useState(false);
 
     Future<void> handleLogout() async {
@@ -132,10 +133,32 @@ class ProfileScreen extends HookConsumerWidget {
                 ),
                 child: SwitchListTile.adaptive(
                   title: const Text('Notifications'),
-                  value: isNotificationsOn.value,
-                  onChanged: (value) {
-                    isNotificationsOn.value = value;
-                  },
+                  subtitle: Text(
+                    pushEnabledAsync.when(
+                      data: (enabled) => enabled ? 'Enabled' : 'Disabled',
+                      loading: () => 'Loading...',
+                      error: (_, __) => 'Could not load preference',
+                    ),
+                  ),
+                  value: pushEnabledAsync.valueOrNull ?? true,
+                  onChanged: pushEnabledAsync.isLoading
+                      ? null
+                      : (value) async {
+                          await ref
+                              .read(pushEnabledProvider.notifier)
+                              .setPushEnabled(value);
+
+                          final updated = ref.read(pushEnabledProvider);
+                          if (updated.hasError && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Could not update push preference.',
+                                ),
+                              ),
+                            );
+                          }
+                        },
                   activeThumbColor: AppTheme.primaryColor,
                   activeTrackColor:
                       AppTheme.primaryColor.withValues(alpha: 0.35),

@@ -14,5 +14,10 @@ abstract class AuthRepository {
   });
   Future<UserModel?> signInWithGoogle();
   Future<UserModel?> signInWithKakao();
+  Future<void> sendPasswordResetEmail({required String email});
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
   Future<void> signOut();
 }
