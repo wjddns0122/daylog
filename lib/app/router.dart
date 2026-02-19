@@ -10,6 +10,7 @@ import 'package:daylog/features/feed/presentation/screens/pending_screen.dart';
 import 'package:daylog/features/navigation/presentation/screens/main_scaffold.dart';
 import 'package:daylog/features/notification/presentation/screens/notification_screen.dart';
 import 'package:daylog/features/profile/presentation/screens/profile_screen.dart';
+import 'package:daylog/features/profile/presentation/screens/user_posts_screen.dart';
 import 'package:daylog/features/settings/presentation/screens/settings_screen.dart';
 import 'package:daylog/features/settings/presentation/screens/change_password_screen.dart';
 import 'package:daylog/features/calendar/presentation/screens/calendar_screen.dart'; // Added
@@ -169,6 +170,30 @@ GoRouter router(Ref ref) {
             return const ProfileScreen();
           }
           return ProfileScreen(userId: uid);
+        },
+      ),
+      GoRoute(
+        path: '/users/:uid/posts',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final uid = state.pathParameters['uid'];
+          if (uid == null || uid.isEmpty) {
+            return const FeedScreen();
+          }
+
+          final extra = state.extra;
+          String? initialPostId;
+          String? title;
+          if (extra is Map<String, dynamic>) {
+            initialPostId = extra['initialPostId'] as String?;
+            title = extra['title'] as String?;
+          }
+
+          return UserPostsScreen(
+            userId: uid,
+            initialPostId: initialPostId,
+            title: title,
+          );
         },
       ),
     ],

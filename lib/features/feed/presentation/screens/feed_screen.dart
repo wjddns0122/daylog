@@ -183,9 +183,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         }
 
         if (_isGridMode) {
-          // Keep newest-first ordering in grid mode too.
+          // Grid mode remains sorted by like count.
           final sortedFeed = [...feedInternal]
-            ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+            ..sort((a, b) => b.likedBy.length.compareTo(a.likedBy.length));
 
           return [
             SliverGrid(

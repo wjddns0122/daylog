@@ -1,4 +1,5 @@
 import 'package:daylog/core/theme/app_theme.dart';
+import 'package:daylog/features/auth/domain/models/user_model.dart';
 import 'package:daylog/features/feed/presentation/providers/user_profile_provider.dart';
 import 'package:daylog/features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'package:daylog/features/profile/presentation/viewmodels/profile_view_model.dart';
@@ -56,6 +57,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       });
     } finally {
       ref.invalidate(relationshipProvider(targetUserId));
+      ref.invalidate(followersProvider(targetUserId));
+      final currentUid = ref.read(authViewModelProvider).valueOrNull?.uid;
+      if (currentUid != null) {
+        ref.invalidate(followingProvider(currentUid));
+      }
       if (mounted) {
         setState(() {
           _isFollowActionInFlight = false;
@@ -87,6 +93,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final profileState = user != null
         ? ref.watch(profileViewModelProvider(user.uid))
         : const ProfileState();
+    final followersAsync = user != null
+        ? ref.watch(followersProvider(user.uid))
+        : const AsyncValue<List<UserModel>>.data([]);
+    final followingAsync = user != null
+        ? ref.watch(followingProvider(user.uid))
+        : const AsyncValue<List<UserModel>>.data([]);
+    final followerCount =
+        followersAsync.valueOrNull?.length ?? user?.followersCount ?? 0;
+    final followingCount =
+        followingAsync.valueOrNull?.length ?? user?.followingCount ?? 0;
 
     String formattedDate = '';
     if (user?.createdAt != null) {
@@ -144,8 +160,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     '반가워요! 방문 감사합니다! :0', // Placeholder or add 'bio' to UserModel
                 joinDate: formattedDate,
                 postCount: profileState.posts.length,
-                followerCount: user.followersCount,
-                followingCount: user.followingCount,
+                followerCount: followerCount,
+                followingCount: followingCount,
                 onTapFollowers: isOwnProfile
                     ? () => context.push('/profile/followers')
                     : null,
@@ -194,15 +210,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final post = profileState.posts[index];
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: AppTheme.surfaceColor,
-                          image: post.url.isNotEmpty == true
-                              ? DecorationImage(
-                                  image: NetworkImage(post.url),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
+                      return GestureDetector(
+                        onTap: () {
+                          context.push(
+                            '/users/${user.uid}/posts',
+                            extra: {
+                              'initialPostId': post.id,
+                              'title': user.nickname ?? user.displayName,
+                            },
+                          );
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceColor,
+                            image: post.url.isNotEmpty == true
+                                ? DecorationImage(
+                                    image: NetworkImage(post.url),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
                         ),
                       );
                     },
