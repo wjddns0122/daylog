@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:daylog/core/theme/app_theme.dart';
+import 'package:daylog/features/feed/presentation/providers/user_profile_provider.dart';
 import 'package:daylog/features/social/domain/repositories/social_repository.dart';
 import 'package:daylog/features/social/presentation/providers/social_provider.dart';
 import 'package:flutter/material.dart';
@@ -81,6 +82,7 @@ class _UserSearchScreenState extends ConsumerState<UserSearchScreen> {
   Widget build(BuildContext context) {
     final query = ref.watch(socialSearchQueryProvider);
     final searchAsync = ref.watch(socialSearchProvider);
+    final recentUserIds = ref.watch(recentSearchUsersProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -110,7 +112,7 @@ class _UserSearchScreenState extends ConsumerState<UserSearchScreen> {
             const SizedBox(height: 12),
             Expanded(
               child: query.trim().isEmpty
-                  ? const Center(child: Text('검색어를 입력하세요.'))
+                  ? _buildRecentUsers(recentUserIds)
                   : searchAsync.when(
                       data: (users) {
                         if (users.isEmpty) {
@@ -130,7 +132,12 @@ class _UserSearchScreenState extends ConsumerState<UserSearchScreen> {
                             final isBusy = _inFlightUserIds.contains(user.uid);
 
                             return ListTile(
-                              onTap: () => context.push('/users/${user.uid}'),
+                              onTap: () {
+                                ref
+                                    .read(recentSearchUsersProvider.notifier)
+                                    .addUser(user.uid);
+                                context.push('/users/${user.uid}');
+                              },
                               leading: CircleAvatar(
                                 backgroundImage: (user.photoUrl != null &&
                                         user.photoUrl!.isNotEmpty)
@@ -166,6 +173,78 @@ class _UserSearchScreenState extends ConsumerState<UserSearchScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildRecentUsers(List<String> recentUserIds) {
+    if (recentUserIds.isEmpty) {
+      return const Center(child: Text('검색어를 입력하세요.'));
+    }
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            const Text(
+              '최근 검색',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: () =>
+                  ref.read(recentSearchUsersProvider.notifier).clear(),
+              child: const Text('지우기'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Expanded(
+          child: ListView.separated(
+            itemCount: recentUserIds.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final uid = recentUserIds[index];
+              final userAsync = ref.watch(userProfileProvider(uid));
+
+              return ListTile(
+                onTap: () => context.push('/users/$uid'),
+                leading: userAsync.when(
+                  data: (user) {
+                    if (user?.photoUrl != null && user!.photoUrl!.isNotEmpty) {
+                      return CircleAvatar(
+                        backgroundImage: NetworkImage(user.photoUrl!),
+                      );
+                    }
+                    return const CircleAvatar(child: Icon(Icons.person));
+                  },
+                  loading: () => const CircleAvatar(
+                    child: SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                  error: (_, __) =>
+                      const CircleAvatar(child: Icon(Icons.person)),
+                ),
+                title: Text(
+                  userAsync.valueOrNull?.nickname ??
+                      userAsync.valueOrNull?.displayName ??
+                      uid,
+                ),
+                subtitle: Text('@${userAsync.valueOrNull?.nickname ?? uid}'),
+                trailing: IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  color: const Color(0xFF8E8E8E),
+                  onPressed: () => ref
+                      .read(recentSearchUsersProvider.notifier)
+                      .removeUser(uid),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

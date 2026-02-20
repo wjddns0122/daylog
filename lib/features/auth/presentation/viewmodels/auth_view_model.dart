@@ -57,8 +57,9 @@ class AuthViewModel extends _$AuthViewModel {
       // signInWithGoogle returns UserModel? or null.
       if (user == null) {
         // Canceled
-        // We might want to refresh state to current stream value
         ref.invalidateSelf();
+      } else {
+        state = AsyncValue.data(user);
       }
     } catch (e, st) {
       state = AsyncValue.error(e, st);

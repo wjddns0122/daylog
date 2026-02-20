@@ -32,12 +32,29 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 @riverpod
 GoRouter router(Ref ref) {
-  final authState = ref.watch(authViewModelProvider);
+  final refreshNotifier = _RouterRefreshNotifier();
+  ref.onDispose(refreshNotifier.dispose);
+
+  ref.listen(authViewModelProvider, (previous, next) {
+    final prevUid = previous?.valueOrNull?.uid;
+    final nextUid = next.valueOrNull?.uid;
+    final prevSetup = previous?.valueOrNull?.profileSetupCompleted;
+    final nextSetup = next.valueOrNull?.profileSetupCompleted;
+
+    if (prevUid != nextUid ||
+        prevSetup != nextSetup ||
+        previous?.isLoading != next.isLoading ||
+        previous?.hasError != next.hasError) {
+      refreshNotifier.bump();
+    }
+  });
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/login',
+    refreshListenable: refreshNotifier,
     redirect: (context, state) {
+      final authState = ref.read(authViewModelProvider);
       final isLoading = authState.isLoading;
       final user = authState.valueOrNull;
 
@@ -220,4 +237,8 @@ GoRouter router(Ref ref) {
       ),
     ],
   );
+}
+
+class _RouterRefreshNotifier extends ChangeNotifier {
+  void bump() => notifyListeners();
 }

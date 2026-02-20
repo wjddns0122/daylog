@@ -1,5 +1,6 @@
 import 'package:daylog/core/theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:daylog/features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'package:daylog/features/notification/presentation/providers/notification_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -24,7 +25,7 @@ class SettingsScreen extends HookConsumerWidget {
 
       isBusy.value = true;
       try {
-        await FirebaseAuth.instance.signOut();
+        await ref.read(authViewModelProvider.notifier).logout();
         if (context.mounted) {
           context.go('/login');
         }
