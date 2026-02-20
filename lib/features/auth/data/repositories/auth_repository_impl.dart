@@ -31,7 +31,7 @@ class AuthRepositoryImpl implements AuthRepository {
               scopes: ['email'],
             );
 
-  static final RegExp _nicknameRegExp = RegExp(r'^[A-Za-z_]+$');
+  static final RegExp _nicknameRegExp = RegExp(r'^[A-Za-z0-9._-]+$');
   static const int _nicknameMinLength = 3;
   static const int _nicknameMaxLength = 20;
 

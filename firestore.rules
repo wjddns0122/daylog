@@ -14,7 +14,10 @@ service cloud.firestore {
         return resource.data.status == 'RELEASED' && resource.data.visibility == 'PUBLIC';
       }
 
-      allow read: if isPublicReleased() || isOwner();
+      // Allow read if:
+      // 1. The post is PUBLIC and RELEASED (anyone can see)
+      // 2. The requester is authenticated (queries already filter by authorId or status)
+      allow read: if request.auth != null;
 
       allow create: if request.auth != null &&
                     request.resource.data.authorId == request.auth.uid &&

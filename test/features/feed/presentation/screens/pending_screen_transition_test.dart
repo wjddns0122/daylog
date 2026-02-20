@@ -24,7 +24,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          currentUserIdProvider.overrideWithValue('user_01'),
+          currentUserIdProvider.overrideWith((ref) => Stream.value('user_01')),
           feedRepositoryProvider.overrideWithValue(repository),
         ],
         child: const MaterialApp(home: PendingScreen()),

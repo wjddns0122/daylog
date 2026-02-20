@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/feed_repository_impl.dart';
@@ -8,6 +10,11 @@ final feedRepositoryProvider = Provider<FeedRepository>((ref) {
   return FeedRepositoryImpl();
 });
 
+/// Provides the current user's UID reactively, updating on auth state changes.
+final currentUserIdProvider = StreamProvider<String?>((ref) {
+  return FirebaseAuth.instance.authStateChanges().map((user) => user?.uid);
+});
+
 // Convert to StreamNotifier to handle methods like deletePost
 class FeedNotifier extends StreamNotifier<List<FeedEntity>> {
   late FeedRepository _repository;
@@ -15,6 +22,16 @@ class FeedNotifier extends StreamNotifier<List<FeedEntity>> {
   @override
   Stream<List<FeedEntity>> build() {
     _repository = ref.watch(feedRepositoryProvider);
+
+    // Wait for auth to be ready before querying
+    final userIdAsync = ref.watch(currentUserIdProvider);
+    final userId = userIdAsync.valueOrNull;
+
+    // If auth is still loading or user is not logged in, return empty
+    if (userIdAsync.isLoading || userId == null) {
+      return Stream.value(const []);
+    }
+
     return _repository.getFeedStream();
   }
 
@@ -27,7 +44,7 @@ class FeedNotifier extends StreamNotifier<List<FeedEntity>> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       return;
-    } // Should allow sign in or show error, but silent for now
+    }
 
     final isLiked = likedBy.contains(user.uid);
     await _repository.toggleLike(postId, user.uid, isLiked);
@@ -39,7 +56,8 @@ final feedProvider = StreamNotifierProvider<FeedNotifier, List<FeedEntity>>(
 );
 
 final myDiaryFeedProvider = StreamProvider.autoDispose<List<FeedEntity>>((ref) {
-  final userId = ref.watch(currentUserIdProvider);
+  final userIdAsync = ref.watch(currentUserIdProvider);
+  final userId = userIdAsync.valueOrNull;
   if (userId == null) {
     return Stream.value(const []);
   }
@@ -48,13 +66,10 @@ final myDiaryFeedProvider = StreamProvider.autoDispose<List<FeedEntity>>((ref) {
   return repository.getMyFeedStream(userId);
 });
 
-final currentUserIdProvider = Provider<String?>((ref) {
-  return FirebaseAuth.instance.currentUser?.uid;
-});
-
 final currentUserLatestPostProvider = StreamProvider.autoDispose<FeedEntity?>(
   (ref) {
-    final userId = ref.watch(currentUserIdProvider);
+    final userIdAsync = ref.watch(currentUserIdProvider);
+    final userId = userIdAsync.valueOrNull;
     if (userId == null) {
       return Stream.value(null);
     }
@@ -66,7 +81,8 @@ final currentUserLatestPostProvider = StreamProvider.autoDispose<FeedEntity?>(
 
 final currentPendingPostProvider =
     StreamProvider.autoDispose<FeedEntity?>((ref) {
-  final userId = ref.watch(currentUserIdProvider);
+  final userIdAsync = ref.watch(currentUserIdProvider);
+  final userId = userIdAsync.valueOrNull;
   if (userId == null) {
     return Stream.value(null);
   }

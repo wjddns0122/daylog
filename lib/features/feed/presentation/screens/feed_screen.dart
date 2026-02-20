@@ -9,6 +9,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../camera/presentation/widgets/developing_card.dart';
 import '../../domain/entities/feed_entity.dart';
 import '../providers/feed_provider.dart';
+import '../screens/feed_detail_screen.dart';
 import '../widgets/feed_card.dart';
 import '../widgets/feed_grid_item.dart';
 import '../../../social/presentation/providers/social_provider.dart';
@@ -25,7 +26,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUserId = ref.watch(currentUserIdProvider);
+    final currentUserId = ref.watch(currentUserIdProvider).valueOrNull;
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       body: SafeArea(
@@ -198,7 +199,19 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
                   final item = sortedFeed[index];
-                  return FeedGridItem(item: item);
+                  return FeedGridItem(
+                    item: item,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => FeedDetailScreen(
+                            posts: sortedFeed,
+                            initialPostId: item.id,
+                          ),
+                        ),
+                      );
+                    },
+                  );
                 },
                 childCount: sortedFeed.length,
               ),

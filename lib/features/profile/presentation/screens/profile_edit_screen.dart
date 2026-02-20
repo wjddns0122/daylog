@@ -16,7 +16,7 @@ class ProfileEditScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
-  static final RegExp _nicknameRegExp = RegExp(r'^[A-Za-z_]+$');
+  static final RegExp _nicknameRegExp = RegExp(r'^[A-Za-z0-9._-]+$');
   static const int _nicknameMinLength = 3;
   static const int _nicknameMaxLength = 20;
 
@@ -71,7 +71,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     }
     if (!_nicknameRegExp.hasMatch(nickname)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('닉네임은 영어와 밑줄(_)만 입력할 수 있어요.')),
+        const SnackBar(content: Text('닉네임은 영어, 숫자, 특수기호(._-)만 입력할 수 있어요.')),
       );
       return;
     }
@@ -113,7 +113,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       if (e is FirebaseAuthException) {
         message = switch (e.code) {
           'nickname-already-in-use' => '이미 사용 중인 닉네임이에요.',
-          'invalid-nickname-format' => '닉네임은 영어와 밑줄(_)만 사용할 수 있어요.',
+          'invalid-nickname-format' => '닉네임은 영어, 숫자, 특수기호(._-)만 사용할 수 있어요.',
           'invalid-nickname-length' => '닉네임은 3자 이상 20자 이하로 입력해주세요.',
           _ => e.message ?? message,
         };

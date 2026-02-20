@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:daylog/features/camera/presentation/screens/result_screen.dart';
 import 'package:daylog/features/feed/domain/entities/feed_entity.dart';
@@ -23,6 +24,10 @@ class _PendingScreenState extends ConsumerState<PendingScreen>
   late AnimationController _animationController;
   late Animation<double> _flipAnimation;
   bool _isNavigatingToResult = false;
+
+  /// The ID of the pending post we're waiting for.
+  /// Set once on first load, used to detect when THIS post becomes RELEASED.
+  String? _trackedPostId;
 
   @override
   void initState() {
@@ -68,33 +73,106 @@ class _PendingScreenState extends ConsumerState<PendingScreen>
     return progress.clamp(0.0, 1.0);
   }
 
+  void _goToResult(FeedEntity post) {
+    if (_isNavigatingToResult) return;
+    _isNavigatingToResult = true;
+
+    // Navigate to home, then push ResultScreen on top
+    context.go('/');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ResultScreen(post: post)),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    ref.listen<AsyncValue<FeedEntity?>>(
-      currentUserLatestPostProvider,
-      (previous, next) {
-        final post = next.valueOrNull;
-        if (_isNavigatingToResult ||
-            post == null ||
-            post.status != 'RELEASED') {
-          return;
-        }
-
-        _isNavigatingToResult = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) {
-            return;
-          }
-
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => ResultScreen(post: post)),
-          );
-        });
-      },
-    );
-
+    // Watch the user's latest post (real-time stream)
     final latestPostAsync = ref.watch(currentUserLatestPostProvider);
 
+    return latestPostAsync.when(
+      loading: () => _buildScaffold(
+        body: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (err, _) => _buildScaffold(
+        body: Center(child: Text('Error: $err')),
+      ),
+      data: (post) {
+        if (post == null) {
+          return _buildScaffold(
+            body: const Center(child: Text('현재 대기 중인 게시물이 없습니다.')),
+          );
+        }
+
+        // Track the first pending post we see
+        if (_trackedPostId == null && post.status == 'PENDING') {
+          _trackedPostId = post.id;
+        }
+
+        // If the tracked post is now RELEASED → navigate to result!
+        if (post.status == 'RELEASED' &&
+            (_trackedPostId == null || _trackedPostId == post.id)) {
+          // Show a brief loading state while navigating
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _goToResult(post);
+          });
+          return _buildScaffold(
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Your memory is ready!',
+                    style: GoogleFonts.lora(
+                      fontSize: 18,
+                      color: const Color(0xFF4A4A4A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // If post is PROCESSING (AI curation in progress)
+        if (post.status == 'PROCESSING') {
+          return _buildScaffold(
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    'AI가 음악을 큐레이션 중이에요...',
+                    style: GoogleFonts.lora(
+                      fontSize: 16,
+                      color: const Color(0xFF7A7A7A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Normal PENDING state → show countdown UI
+        final releaseTime =
+            post.releaseTime ?? DateTime.now().add(const Duration(hours: 6));
+        final remaining = releaseTime.difference(DateTime.now());
+
+        return _buildScaffold(
+          body: _buildPendingBody(remaining, releaseTime),
+        );
+      },
+    );
+  }
+
+  Scaffold _buildScaffold({required Widget body}) {
     return Scaffold(
       backgroundColor: const Color(0xFFD4D4D4),
       appBar: AppBar(
@@ -102,7 +180,13 @@ class _PendingScreenState extends ConsumerState<PendingScreen>
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF474747)),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
         ),
         title: Image.asset(
           'assets/images/logo_header.png',
@@ -110,131 +194,114 @@ class _PendingScreenState extends ConsumerState<PendingScreen>
         ),
         centerTitle: true,
       ),
-      body: latestPostAsync.when(
-        data: (post) {
-          if (post == null) {
-            return const Center(child: Text("No pending posts."));
-          }
-          if (post.status != 'PENDING') {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: SafeArea(child: body),
+    );
+  }
 
-          final releaseTime =
-              post.releaseTime ?? DateTime.now().add(const Duration(hours: 6));
-          final remaining = releaseTime.difference(DateTime.now());
-
-          return Column(
-            children: [
-              const SizedBox(height: 50),
-              Text(
-                "Developing....",
-                style: GoogleFonts.lora(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF4A4A4A),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                _formatDuration(remaining),
-                style: GoogleFonts.lora(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF7A7A7A),
-                ),
-              ),
-              const SizedBox(height: 50),
-              // Animated Card
-              Expanded(
-                child: Center(
-                  child: AnimatedBuilder(
-                    animation: _flipAnimation,
-                    builder: (context, child) {
-                      return Transform(
-                        transform: Matrix4.identity()
-                          ..setEntry(3, 2, 0.001) // Perspective
-                          ..rotateY(_flipAnimation.value),
-                        alignment: Alignment.center,
-                        child: child,
-                      );
-                    },
-                    child: Container(
-                      width: 300,
-                      height: 340,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE6E6E6),
-                        borderRadius: BorderRadius.circular(9),
-                        boxShadow: [
-                          BoxShadow(
-                            offset: const Offset(0, 4),
-                            blurRadius: 10,
-                            color: Colors.black.withValues(alpha: 0.15),
-                          ),
-                        ],
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          const Divider(
-                            color: Color(0xFFD1D1D1),
-                            thickness: 1,
-                            height: 1,
-                          ),
-                          // Split-Flap Animation Widget
-                          const _SplitFlapIcon(),
-                        ],
-                      ),
+  Widget _buildPendingBody(Duration remaining, DateTime releaseTime) {
+    return Column(
+      children: [
+        const SizedBox(height: 50),
+        Text(
+          "Developing....",
+          style: GoogleFonts.lora(
+            fontSize: 24,
+            fontWeight: FontWeight.w400,
+            color: const Color(0xFF4A4A4A),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          _formatDuration(remaining),
+          style: GoogleFonts.lora(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: const Color(0xFF7A7A7A),
+          ),
+        ),
+        const SizedBox(height: 50),
+        // Animated Card
+        Expanded(
+          child: Center(
+            child: AnimatedBuilder(
+              animation: _flipAnimation,
+              builder: (context, child) {
+                return Transform(
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.001) // Perspective
+                    ..rotateY(_flipAnimation.value),
+                  alignment: Alignment.center,
+                  child: child,
+                );
+              },
+              child: Container(
+                width: 300,
+                height: 340,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6E6E6),
+                  borderRadius: BorderRadius.circular(9),
+                  boxShadow: [
+                    BoxShadow(
+                      offset: const Offset(0, 4),
+                      blurRadius: 10,
+                      color: Colors.black.withValues(alpha: 0.15),
                     ),
-                  ),
+                  ],
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Divider(
+                      color: Color(0xFFD1D1D1),
+                      thickness: 1,
+                      height: 1,
+                    ),
+                    // Split-Flap Animation Widget
+                    const _SplitFlapIcon(),
+                  ],
                 ),
               ),
-              // Glassmorphism Progress Bar
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 28.0, vertical: 50),
-                child: ClipRRect(
+            ),
+          ),
+        ),
+        // Glassmorphism Progress Bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 50),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                height: 20,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(22),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      height: 20,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2)),
-                      ),
-                      child: Stack(
-                        children: [
-                          FractionallySizedBox(
-                            alignment: Alignment.centerLeft,
-                            widthFactor: _calculateProgress(releaseTime),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFF232323),
-                                    Color(0xFF7A7A7A)
-                                  ],
-                                  stops: [0.0, 1.0],
-                                ),
-                                borderRadius: BorderRadius.circular(22),
-                              ),
-                            ),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                child: Stack(
+                  children: [
+                    FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: _calculateProgress(releaseTime),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF232323), Color(0xFF7A7A7A)],
+                            stops: [0.0, 1.0],
                           ),
-                        ],
+                          borderRadius: BorderRadius.circular(22),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-            ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text("Error: $err")),
-      ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
