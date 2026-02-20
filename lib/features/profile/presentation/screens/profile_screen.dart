@@ -176,11 +176,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         : '팔로잉'),
                 isActionButtonLoading: !isOwnProfile && _isFollowActionInFlight,
                 onActionButtonPressed: isOwnProfile
-                    ? () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('프로필 편집 기능 준비 중입니다.')),
-                        );
-                      }
+                    ? () => context.push('/profile/edit')
                     : () => _toggleFollow(user.uid, relationship),
               ),
             ),

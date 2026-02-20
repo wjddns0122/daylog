@@ -31,6 +31,60 @@ class AuthRepositoryImpl implements AuthRepository {
               scopes: ['email'],
             );
 
+  static final RegExp _nicknameRegExp = RegExp(r'^[A-Za-z]+$');
+  static const int _nicknameMinLength = 3;
+  static const int _nicknameMaxLength = 20;
+
+  Future<void> _validateNickname({
+    required String nickname,
+    String? currentUid,
+  }) async {
+    final trimmed = nickname.trim();
+    if (trimmed.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'invalid-nickname',
+        message: 'Nickname is required.',
+      );
+    }
+
+    if (!_nicknameRegExp.hasMatch(trimmed)) {
+      throw FirebaseAuthException(
+        code: 'invalid-nickname-format',
+        message: 'Nickname must contain only English letters.',
+      );
+    }
+
+    if (trimmed.length < _nicknameMinLength ||
+        trimmed.length > _nicknameMaxLength) {
+      throw FirebaseAuthException(
+        code: 'invalid-nickname-length',
+        message:
+            'Nickname must be between $_nicknameMinLength and $_nicknameMaxLength characters.',
+      );
+    }
+
+    final lower = trimmed.toLowerCase();
+    final snapshot = await _firestore
+        .collection('users')
+        .where('nicknameLower', isEqualTo: lower)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isEmpty) {
+      return;
+    }
+
+    final existing = snapshot.docs.first;
+    if (currentUid != null && existing.id == currentUid) {
+      return;
+    }
+
+    throw FirebaseAuthException(
+      code: 'nickname-already-in-use',
+      message: 'Nickname is already in use.',
+    );
+  }
+
   @override
   Stream<UserModel?> get authStateChanges {
     return _firebaseAuth.authStateChanges().asyncExpand((user) async* {
@@ -139,6 +193,8 @@ class AuthRepositoryImpl implements AuthRepository {
     required String nickname,
   }) async {
     try {
+      await _validateNickname(nickname: nickname);
+
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -332,12 +388,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
     final trimmedNickname = nickname.trim();
     final trimmedBio = bio.trim();
-    if (trimmedNickname.isEmpty) {
-      throw FirebaseAuthException(
-        code: 'invalid-display-name',
-        message: 'Nickname is required.',
-      );
-    }
+    await _validateNickname(nickname: trimmedNickname, currentUid: user.uid);
     if (trimmedBio.isEmpty) {
       throw FirebaseAuthException(
         code: 'invalid-argument',
@@ -345,7 +396,10 @@ class AuthRepositoryImpl implements AuthRepository {
       );
     }
 
-    String? photoUrl = user.photoURL;
+    final existingDoc =
+        await _firestore.collection('users').doc(user.uid).get();
+    String? photoUrl =
+        user.photoURL ?? existingDoc.data()?['photoUrl'] as String?;
     if (profileImagePath != null && profileImagePath.trim().isNotEmpty) {
       final file = File(profileImagePath);
       final ref = _storage.ref().child('profile_images/${user.uid}.jpg');

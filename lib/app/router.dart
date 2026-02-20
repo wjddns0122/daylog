@@ -11,6 +11,7 @@ import 'package:daylog/features/feed/presentation/screens/pending_screen.dart';
 import 'package:daylog/features/navigation/presentation/screens/main_scaffold.dart';
 import 'package:daylog/features/notification/presentation/screens/notification_screen.dart';
 import 'package:daylog/features/profile/presentation/screens/profile_screen.dart';
+import 'package:daylog/features/profile/presentation/screens/profile_edit_screen.dart';
 import 'package:daylog/features/profile/presentation/screens/user_posts_screen.dart';
 import 'package:daylog/features/settings/presentation/screens/settings_screen.dart';
 import 'package:daylog/features/settings/presentation/screens/change_password_screen.dart';
@@ -176,6 +177,11 @@ GoRouter router(Ref ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) =>
             const FollowListScreen(type: FollowListType.following),
+      ),
+      GoRoute(
+        path: '/profile/edit',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ProfileEditScreen(),
       ),
       GoRoute(
         path: '/users/:uid',

@@ -5,6 +5,7 @@ import 'package:daylog/features/auth/presentation/widgets/auth_header.dart';
 import 'package:daylog/features/auth/presentation/widgets/auth_scaffold.dart';
 import 'package:daylog/features/auth/presentation/widgets/auth_social_section.dart';
 import 'package:daylog/features/auth/presentation/widgets/auth_text_field.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +18,9 @@ class SignupScreen extends ConsumerStatefulWidget {
 }
 
 class _SignupScreenState extends ConsumerState<SignupScreen> {
+  static final RegExp _nicknameRegExp = RegExp(r'^[A-Za-z]+$');
+  static const int _nicknameMinLength = 3;
+  static const int _nicknameMaxLength = 20;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -61,6 +65,20 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       return;
     }
 
+    if (!_nicknameRegExp.hasMatch(nickname)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('닉네임은 영어만 입력할 수 있어요.')),
+      );
+      return;
+    }
+    if (nickname.length < _nicknameMinLength ||
+        nickname.length > _nicknameMaxLength) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('닉네임은 3자 이상 20자 이하로 입력해주세요.')),
+      );
+      return;
+    }
+
     await ref.read(authViewModelProvider.notifier).signUp(
           email: email,
           password: password,
@@ -73,8 +91,18 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   Widget build(BuildContext context) {
     ref.listen(authViewModelProvider, (previous, next) {
       if (next.hasError) {
+        String message = '회원가입 실패: ${next.error}';
+        final err = next.error;
+        if (err is FirebaseAuthException) {
+          message = switch (err.code) {
+            'nickname-already-in-use' => '이미 사용 중인 닉네임이에요.',
+            'invalid-nickname-format' => '닉네임은 영어만 사용할 수 있어요.',
+            'invalid-nickname-length' => '닉네임은 3자 이상 20자 이하로 입력해주세요.',
+            _ => '회원가입 실패: ${err.message ?? err.code}',
+          };
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('회원가입 실패: ${next.error}')),
+          SnackBar(content: Text(message)),
         );
       }
       // Navigation is handled by router based on auth state
