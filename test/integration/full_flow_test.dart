@@ -246,6 +246,21 @@ class _FakeFeedRepository implements FeedRepository {
   }
 
   @override
+  Stream<List<FeedEntity>> watchUserPostsByDateRange({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) {
+    return _feedController.stream.map((posts) => posts
+        .where((post) =>
+            post.userId == userId &&
+            post.status == 'RELEASED' &&
+            !post.timestamp.isBefore(startDate) &&
+            post.timestamp.isBefore(endDate))
+        .toList(growable: false));
+  }
+
+  @override
   Stream<FeedEntity?> getMyPendingPost(String userId) =>
       _latestController.stream
           .map((post) => post?.status == 'PENDING' ? post : null);

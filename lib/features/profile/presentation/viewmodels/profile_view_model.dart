@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:daylog/features/feed/domain/entities/feed_entity.dart';
 import 'package:daylog/features/feed/domain/repositories/feed_repository.dart';
 import 'package:daylog/features/feed/presentation/providers/feed_provider.dart';
@@ -30,55 +32,50 @@ class ProfileState {
 class ProfileViewModel extends StateNotifier<ProfileState> {
   final FeedRepository _feedRepository;
   final String userId;
+  StreamSubscription<List<FeedEntity>>? _subscription;
 
   ProfileViewModel(this._feedRepository, this.userId)
-      : super(const ProfileState()) {
-    fetchUserPosts();
+      : super(const ProfileState(isLoading: true)) {
+    _subscribeToUserPosts();
   }
 
-  Future<void> fetchUserPosts() async {
-    // Only set loading if empty initially to avoid flickering on refresh
-    if (state.posts.isEmpty) {
-      state = state.copyWith(isLoading: true);
-    }
+  void _subscribeToUserPosts() {
+    _subscription?.cancel();
 
-    try {
-      _feedRepository.getMyFeedStream(userId).listen((posts) {
-        // Filter by RELEASED status
-        final releasedPosts =
-            posts.where((post) => post.status == 'RELEASED').toList();
+    _subscription = _feedRepository.getMyFeedStream(userId).listen((posts) {
+      // Filter by RELEASED status
+      final releasedPosts =
+          posts.where((post) => post.status == 'RELEASED').toList();
 
-        // Sort by newest first (descending timestamp)
-        releasedPosts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      // Sort by newest first (descending timestamp)
+      releasedPosts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-        if (mounted) {
-          state = state.copyWith(
-            posts: releasedPosts,
-            isLoading: false,
-          );
-        }
-      }, onError: (e) {
-        if (mounted) {
-          state = state.copyWith(
-            isLoading: false,
-            error: e.toString(),
-          );
-        }
-      });
-    } catch (e) {
+      if (mounted) {
+        state = state.copyWith(
+          posts: releasedPosts,
+          isLoading: false,
+          error: null,
+        );
+      }
+    }, onError: (e) {
       if (mounted) {
         state = state.copyWith(
           isLoading: false,
           error: e.toString(),
         );
       }
-    }
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 }
 
-final profileViewModelProvider =
-    StateNotifierProvider.family<ProfileViewModel, ProfileState, String>(
-        (ref, userId) {
+final profileViewModelProvider = StateNotifierProvider.autoDispose
+    .family<ProfileViewModel, ProfileState, String>((ref, userId) {
   final feedRepository = ref.watch(feedRepositoryProvider);
   return ProfileViewModel(feedRepository, userId);
 });

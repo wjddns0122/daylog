@@ -55,9 +55,7 @@ service cloud.firestore {
     }
 
     match /follow_requests/{requestId} {
-      allow read: if request.auth != null &&
-                  (resource.data.requesterId == request.auth.uid ||
-                   resource.data.targetUserId == request.auth.uid);
+      allow read: if request.auth != null;
       allow write: if false;
     }
 

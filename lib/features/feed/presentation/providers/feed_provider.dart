@@ -10,7 +10,7 @@ final feedRepositoryProvider = Provider<FeedRepository>((ref) {
 
 // Convert to StreamNotifier to handle methods like deletePost
 class FeedNotifier extends StreamNotifier<List<FeedEntity>> {
-  late final FeedRepository _repository;
+  late FeedRepository _repository;
 
   @override
   Stream<List<FeedEntity>> build() {

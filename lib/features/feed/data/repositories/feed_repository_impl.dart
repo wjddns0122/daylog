@@ -86,6 +86,25 @@ class FeedRepositoryImpl implements FeedRepository {
   }
 
   @override
+  Stream<List<FeedEntity>> watchUserPostsByDateRange({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) {
+    return _firestore
+        .collection('posts')
+        .where('authorId', isEqualTo: userId)
+        .where('status', isEqualTo: 'RELEASED')
+        .where('createdAt',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('createdAt', isLessThan: Timestamp.fromDate(endDate))
+        .orderBy('createdAt', descending: false)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => FeedEntity.fromFirestore(doc)).toList());
+  }
+
+  @override
   Stream<FeedEntity?> getMyPendingPost(String userId) {
     return _firestore
         .collection('posts')

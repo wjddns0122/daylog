@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:daylog/features/camera/presentation/screens/result_screen.dart';
 import 'package:daylog/features/feed/domain/entities/feed_entity.dart';
@@ -27,6 +29,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   bool _isLoadingPosts = false;
   String? _loadError;
   Map<DateTime, FeedEntity> _postsByDate = {};
+  StreamSubscription<List<FeedEntity>>? _postsSubscription;
 
   @override
   void initState() {
@@ -35,8 +38,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     _focusedDay = DateTime(now.year, now.month, 1);
     _selectedDay = DateTime(now.year, now.month, now.day);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadPostsForFocusedMonth();
+      _subscribeToPostsForFocusedMonth();
     });
+  }
+
+  @override
+  void dispose() {
+    _postsSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -491,10 +500,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     setState(() {
       _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + delta, 1);
     });
-    _loadPostsForFocusedMonth();
+    _subscribeToPostsForFocusedMonth();
   }
 
-  Future<void> _loadPostsForFocusedMonth() async {
+  void _subscribeToPostsForFocusedMonth() {
+    // Cancel previous subscription
+    _postsSubscription?.cancel();
+
     String? userId;
     try {
       userId = FirebaseAuth.instance.currentUser?.uid;
@@ -502,9 +514,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       userId = null;
     }
     if (userId == null) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _postsByDate = {};
         _loadError = null;
@@ -518,49 +528,47 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       _loadError = null;
     });
 
-    try {
-      final repository = ref.read(feedRepositoryProvider);
-      final startDate = DateTime(_focusedDay.year, _focusedDay.month, 1);
-      final endDate = DateTime(_focusedDay.year, _focusedDay.month + 1, 1);
-      final posts = await repository.getUserPostsByDateRange(
-        userId: userId,
-        startDate: startDate,
-        endDate: endDate,
-      );
+    final repository = ref.read(feedRepositoryProvider);
+    final startDate = DateTime(_focusedDay.year, _focusedDay.month, 1);
+    final endDate = DateTime(_focusedDay.year, _focusedDay.month + 1, 1);
 
-      final mappedPosts = <DateTime, FeedEntity>{};
-      for (final post in posts) {
-        final dayKey = DateTime(
-          post.timestamp.year,
-          post.timestamp.month,
-          post.timestamp.day,
-        );
-        final existing = mappedPosts[dayKey];
-        if (existing == null || post.timestamp.isAfter(existing.timestamp)) {
-          mappedPosts[dayKey] = post;
+    _postsSubscription = repository
+        .watchUserPostsByDateRange(
+      userId: userId,
+      startDate: startDate,
+      endDate: endDate,
+    )
+        .listen(
+      (posts) {
+        if (!mounted) return;
+
+        final mappedPosts = <DateTime, FeedEntity>{};
+        for (final post in posts) {
+          final dayKey = DateTime(
+            post.timestamp.year,
+            post.timestamp.month,
+            post.timestamp.day,
+          );
+          final existing = mappedPosts[dayKey];
+          if (existing == null || post.timestamp.isAfter(existing.timestamp)) {
+            mappedPosts[dayKey] = post;
+          }
         }
-      }
 
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _postsByDate = mappedPosts;
-      });
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _postsByDate = {};
-        _loadError = 'Could not load memories for this month.';
-      });
-    } finally {
-      if (mounted) {
         setState(() {
+          _postsByDate = mappedPosts;
           _isLoadingPosts = false;
+          _loadError = null;
         });
-      }
-    }
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() {
+          _postsByDate = {};
+          _isLoadingPosts = false;
+          _loadError = 'Could not load memories for this month.';
+        });
+      },
+    );
   }
 }

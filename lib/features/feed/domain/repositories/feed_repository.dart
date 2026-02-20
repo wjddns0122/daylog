@@ -11,6 +11,11 @@ abstract class FeedRepository {
     required DateTime startDate,
     required DateTime endDate,
   });
+  Stream<List<FeedEntity>> watchUserPostsByDateRange({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+  });
 
   /// Get pending post for the current user
   Stream<FeedEntity?> getMyPendingPost(String userId);
