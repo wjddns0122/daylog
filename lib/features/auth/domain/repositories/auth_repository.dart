@@ -25,4 +25,5 @@ abstract class AuthRepository {
     String? profileImagePath,
   });
   Future<void> signOut();
+  Future<void> deleteAccount();
 }

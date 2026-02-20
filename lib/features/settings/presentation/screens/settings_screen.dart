@@ -226,11 +226,86 @@ class SettingsScreen extends HookConsumerWidget {
                       ),
                     ),
             ),
+            const SizedBox(height: 12),
+            FilledButton.tonal(
+              onPressed: isBusy.value
+                  ? null
+                  : () => _showDeleteConfirmation(context, ref, isBusy),
+              style: FilledButton.styleFrom(
+                foregroundColor: Colors.red,
+                backgroundColor: Colors.red.withValues(alpha: 0.08),
+                side: BorderSide(
+                  color: Colors.red.withValues(alpha: 0.2),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: isBusy.value
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.red),
+                    )
+                  : Text(
+                      '계정 탈퇴',
+                      style: GoogleFonts.lora(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+void _showDeleteConfirmation(
+  BuildContext context,
+  WidgetRef ref,
+  ValueNotifier<bool> isBusy,
+) {
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('계정 탈퇴'),
+      content: const Text(
+        '정말로 계정을 탈퇴하시겠습니까?\n\n탈퇴하면 모든 데이터가 삭제되며 복구할 수 없습니다.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          onPressed: () async {
+            Navigator.of(ctx).pop();
+            isBusy.value = true;
+            try {
+              await ref.read(authViewModelProvider.notifier).deleteAccount();
+              if (context.mounted) {
+                context.go('/login');
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('계정 탈퇴에 실패했어요: $e')),
+                );
+              }
+            } finally {
+              isBusy.value = false;
+            }
+          },
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('탈퇴하기'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SettingsSection extends StatelessWidget {

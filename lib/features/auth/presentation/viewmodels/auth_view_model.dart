@@ -113,4 +113,14 @@ class AuthViewModel extends _$AuthViewModel {
           profileImagePath: profileImagePath,
         );
   }
+
+  Future<void> deleteAccount() async {
+    state = const AsyncValue.loading();
+    try {
+      await ref.read(authRepositoryProvider).deleteAccount();
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
 }

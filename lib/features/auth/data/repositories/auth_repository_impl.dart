@@ -433,6 +433,27 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> deleteAccount() async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'No authenticated user found.',
+      );
+    }
+
+    // Delete user Firestore document first
+    try {
+      await _firestore.collection('users').doc(user.uid).delete();
+    } catch (_) {
+      // Non-critical: continue with auth deletion
+    }
+
+    // Delete Firebase Auth account
+    await user.delete();
+  }
+
+  @override
   Future<void> sendPasswordResetEmail({required String email}) async {
     await _firebaseAuth.sendPasswordResetEmail(email: email);
   }
