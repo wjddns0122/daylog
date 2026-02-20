@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:daylog/core/theme/app_theme.dart';
 import 'package:daylog/features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileEditScreen extends ConsumerStatefulWidget {
   const ProfileEditScreen({super.key});
@@ -13,13 +16,14 @@ class ProfileEditScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
-  static final RegExp _nicknameRegExp = RegExp(r'^[A-Za-z]+$');
+  static final RegExp _nicknameRegExp = RegExp(r'^[A-Za-z_]+$');
   static const int _nicknameMinLength = 3;
   static const int _nicknameMaxLength = 20;
 
   final _nicknameController = TextEditingController();
   final _bioController = TextEditingController();
   bool _isSaving = false;
+  String? _selectedImagePath;
 
   @override
   void initState() {
@@ -38,6 +42,21 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 80,
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedImagePath = picked.path;
+      });
+    }
+  }
+
   Future<void> _save() async {
     if (_isSaving) return;
 
@@ -52,7 +71,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     }
     if (!_nicknameRegExp.hasMatch(nickname)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('닉네임은 영어만 입력할 수 있어요.')),
+        const SnackBar(content: Text('닉네임은 영어와 밑줄(_)만 입력할 수 있어요.')),
       );
       return;
     }
@@ -84,6 +103,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       await ref.read(authViewModelProvider.notifier).completeProfileSetup(
             nickname: nickname,
             bio: bio,
+            profileImagePath: _selectedImagePath,
           );
       if (!mounted) return;
       context.pop();
@@ -93,7 +113,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       if (e is FirebaseAuthException) {
         message = switch (e.code) {
           'nickname-already-in-use' => '이미 사용 중인 닉네임이에요.',
-          'invalid-nickname-format' => '닉네임은 영어만 사용할 수 있어요.',
+          'invalid-nickname-format' => '닉네임은 영어와 밑줄(_)만 사용할 수 있어요.',
           'invalid-nickname-length' => '닉네임은 3자 이상 20자 이하로 입력해주세요.',
           _ => e.message ?? message,
         };
@@ -112,6 +132,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(authViewModelProvider).valueOrNull;
+    final currentPhotoUrl = user?.photoUrl;
+
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
@@ -125,15 +148,68 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         children: [
+          // ── Profile Photo ──
+          Center(
+            child: GestureDetector(
+              onTap: _pickImage,
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.grey[300],
+                    backgroundImage: _selectedImagePath != null
+                        ? FileImage(File(_selectedImagePath!))
+                        : (currentPhotoUrl != null && currentPhotoUrl.isNotEmpty
+                            ? NetworkImage(currentPhotoUrl) as ImageProvider
+                            : null),
+                    child: (_selectedImagePath == null &&
+                            (currentPhotoUrl == null ||
+                                currentPhotoUrl.isEmpty))
+                        ? const Icon(Icons.person,
+                            size: 40, color: Colors.white)
+                        : null,
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppTheme.backgroundColor,
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── Nickname ──
           const Text(
-            '닉네임(영문만)',
+            '닉네임(영문, 밑줄(_)만 가능)',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _nicknameController,
             decoration: InputDecoration(
-              hintText: 'nickname',
+              hintText: '영문과 밑줄(_)만 입력 가능 (특수문자 불가)',
+              hintStyle: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 13,
+              ),
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(
@@ -143,6 +219,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             ),
           ),
           const SizedBox(height: 18),
+
+          // ── Bio ──
           const Text(
             '한 줄 소개',
             style: TextStyle(fontWeight: FontWeight.w600),
@@ -164,6 +242,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             ),
           ),
           const SizedBox(height: 8),
+
+          // ── Save Button ──
           FilledButton(
             onPressed: _isSaving ? null : _save,
             child: _isSaving

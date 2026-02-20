@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../feed/domain/entities/feed_entity.dart';
+import '../../../feed/presentation/widgets/feed_card.dart';
 import '../providers/like_provider.dart';
 
 class LikeScreen extends ConsumerStatefulWidget {
@@ -28,32 +29,16 @@ class _LikeScreenState extends ConsumerState<LikeScreen> {
             // ── Header: Back + Logo ──
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  // Back chevron
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).maybePop(),
-                    child: const SizedBox(
-                      width: 34,
-                      height: 34,
-                      child: Icon(Icons.chevron_left,
-                          size: 28, color: AppTheme.primaryColor),
-                    ),
+              child: Center(
+                child: Image.asset(
+                  'assets/images/logo_header.png',
+                  height: 34,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.circle,
+                    size: 34,
+                    color: AppTheme.primaryColor,
                   ),
-                  const Spacer(),
-                  // Center logo
-                  Image.asset(
-                    'assets/images/logo_header.png',
-                    height: 34,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.circle,
-                      size: 34,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                  const Spacer(),
-                  const SizedBox(width: 34), // balance
-                ],
+                ),
               ),
             ),
 
@@ -137,7 +122,7 @@ class _LikeScreenState extends ConsumerState<LikeScreen> {
     );
   }
 
-  // ── Grid View (Figma-matched) ──
+  // ── Grid View ──
   Widget _buildGridView(List<FeedEntity> posts) {
     return GridView.builder(
       padding: const EdgeInsets.only(left: 9, right: 9, top: 8, bottom: 130),
@@ -145,85 +130,89 @@ class _LikeScreenState extends ConsumerState<LikeScreen> {
         crossAxisCount: 3,
         crossAxisSpacing: 7,
         mainAxisSpacing: 8,
-        childAspectRatio: 124 / 133, // Figma: w124 x h133
+        childAspectRatio: 124 / 133,
       ),
       itemCount: posts.length,
       itemBuilder: (context, index) {
-        return _GridCard(item: posts[index]);
+        return _GridCard(
+          item: posts[index],
+          onTap: () => _showFeedDetail(context, posts, index),
+        );
       },
     );
   }
 
-  // ── List View ──
+  // ── List View: reuse FeedCard from the main feed ──
   Widget _buildListView(List<FeedEntity> posts) {
     return ListView.builder(
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 130),
+      padding: const EdgeInsets.only(top: 8, bottom: 130),
       itemCount: posts.length,
       itemBuilder: (context, index) {
-        final item = posts[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: AppTheme.lightGrey,
-            borderRadius: BorderRadius.circular(9),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x40000000),
-                blurRadius: 4,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(9),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AspectRatio(
-                  aspectRatio: 1,
-                  child: CachedNetworkImage(
-                    imageUrl: item.url,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
-                      color: AppTheme.lightGrey,
-                      child: const Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    ),
-                    errorWidget: (_, __, ___) => Container(
-                      color: AppTheme.lightGrey,
-                      child: const Icon(Icons.broken_image_outlined,
-                          color: Colors.grey),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.favorite,
-                          size: 16, color: Colors.redAccent),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${item.likedBy.length}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+        return FeedCard(item: posts[index]);
       },
+    );
+  }
+
+  // ── Show feed detail when grid photo is tapped ──
+  void _showFeedDetail(
+      BuildContext context, List<FeedEntity> posts, int initialIndex) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _FeedDetailPage(
+          posts: posts,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Full-page feed detail (scrollable list starting from tapped post) ──
+class _FeedDetailPage extends StatelessWidget {
+  const _FeedDetailPage({
+    required this.posts,
+    required this.initialIndex,
+  });
+
+  final List<FeedEntity> posts;
+  final int initialIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = ScrollController(initialScrollOffset: 0);
+
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
+      appBar: AppBar(
+        backgroundColor: AppTheme.backgroundColor,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new,
+              color: AppTheme.primaryColor, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        centerTitle: true,
+        title: const Text(
+          '좋아요한 게시물',
+          style: TextStyle(
+            color: AppTheme.primaryColor,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      body: ListView.builder(
+        controller: controller,
+        padding: const EdgeInsets.only(bottom: 40),
+        // Show the tapped post first, then the rest after it
+        itemCount: posts.length,
+        itemBuilder: (context, index) {
+          // Reorder: start from initialIndex, wrap around
+          final reorderedIndex = (initialIndex + index) % posts.length;
+          return FeedCard(item: posts[reorderedIndex]);
+        },
+      ),
     );
   }
 }
@@ -231,41 +220,46 @@ class _LikeScreenState extends ConsumerState<LikeScreen> {
 // ── Grid Card (Figma: rounded 9px, #E6E6E6, shadow) ──
 class _GridCard extends StatelessWidget {
   final FeedEntity item;
-  const _GridCard({required this.item});
+  final VoidCallback onTap;
+
+  const _GridCard({required this.item, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.lightGrey,
-        borderRadius: BorderRadius.circular(9),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x40000000), // rgba(0,0,0,0.25)
-            blurRadius: 4,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(9),
-        child: CachedNetworkImage(
-          imageUrl: item.url,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => Container(
-            color: AppTheme.lightGrey,
-            child: const Center(
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.lightGrey,
+          borderRadius: BorderRadius.circular(9),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x40000000),
+              blurRadius: 4,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(9),
+          child: CachedNetworkImage(
+            imageUrl: item.url,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => Container(
+              color: AppTheme.lightGrey,
+              child: const Center(
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
             ),
-          ),
-          errorWidget: (_, __, ___) => Container(
-            color: AppTheme.lightGrey,
-            child: const Icon(Icons.broken_image_outlined,
-                size: 20, color: Colors.grey),
+            errorWidget: (_, __, ___) => Container(
+              color: AppTheme.lightGrey,
+              child: const Icon(Icons.broken_image_outlined,
+                  size: 20, color: Colors.grey),
+            ),
           ),
         ),
       ),

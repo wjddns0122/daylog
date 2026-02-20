@@ -261,9 +261,7 @@ class FeedCard extends ConsumerWidget {
                         ),
                       ),
                     ],
-                  )
-                else
-                  const Icon(Icons.more_horiz, color: Colors.grey),
+                  ),
               ],
             ),
           ),

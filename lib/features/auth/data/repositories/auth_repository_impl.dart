@@ -31,7 +31,7 @@ class AuthRepositoryImpl implements AuthRepository {
               scopes: ['email'],
             );
 
-  static final RegExp _nicknameRegExp = RegExp(r'^[A-Za-z]+$');
+  static final RegExp _nicknameRegExp = RegExp(r'^[A-Za-z_]+$');
   static const int _nicknameMinLength = 3;
   static const int _nicknameMaxLength = 20;
 
@@ -50,7 +50,7 @@ class AuthRepositoryImpl implements AuthRepository {
     if (!_nicknameRegExp.hasMatch(trimmed)) {
       throw FirebaseAuthException(
         code: 'invalid-nickname-format',
-        message: 'Nickname must contain only English letters.',
+        message: 'Nickname must contain only English letters and underscores.',
       );
     }
 
