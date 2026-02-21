@@ -163,12 +163,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 postCount: profileState.posts.length,
                 followerCount: followerCount,
                 followingCount: followingCount,
-                onTapFollowers: isOwnProfile
-                    ? () => context.push('/profile/followers')
-                    : null,
-                onTapFollowing: isOwnProfile
-                    ? () => context.push('/profile/following')
-                    : null,
+                onTapFollowers: () {
+                  final route = isOwnProfile
+                      ? '/profile/followers'
+                      : '/users/${user.uid}/followers';
+                  context.push(route);
+                },
+                onTapFollowing: () {
+                  final route = isOwnProfile
+                      ? '/profile/following'
+                      : '/users/${user.uid}/following';
+                  context.push(route);
+                },
                 actionButtonLabel: isOwnProfile
                     ? '프로필 편집'
                     : (relationship == RelationshipState.following

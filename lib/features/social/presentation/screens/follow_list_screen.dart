@@ -12,14 +12,16 @@ class FollowListScreen extends ConsumerWidget {
   const FollowListScreen({
     super.key,
     required this.type,
+    this.userId,
   });
 
   final FollowListType type;
+  final String? userId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authViewModelProvider).valueOrNull;
-    final uid = user?.uid;
+    final authUser = ref.watch(authViewModelProvider).valueOrNull;
+    final uid = userId ?? authUser?.uid;
 
     if (uid == null) {
       return const Scaffold(

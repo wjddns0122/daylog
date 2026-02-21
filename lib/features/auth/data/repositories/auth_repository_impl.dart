@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter/material.dart';
 import 'dart:io';
 
 part 'auth_repository_impl.g.dart';
@@ -106,7 +107,9 @@ class AuthRepositoryImpl implements AuthRepository {
                 'nicknameLower': nickname.toLowerCase(),
                 'displayNameLower': displayName.toLowerCase(),
               });
-            } catch (_) {}
+            } catch (e) {
+              debugPrint('Error updating user nickname: $e');
+            }
           }
           return UserModel.fromDocument(doc);
         }
@@ -133,7 +136,9 @@ class AuthRepositoryImpl implements AuthRepository {
             'loginMethod': 'unknown',
             'createdAt': FieldValue.serverTimestamp(),
           });
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('Error creating new user document: $e');
+        }
 
         return newUser;
       });

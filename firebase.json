@@ -39,9 +39,7 @@
     }
   },
   "functions": {
-    "predeploy": [
-      "cd \"$RESOURCE_DIR\" && ./node_modules/.bin/tsc"
-    ],
+    "predeploy": ["cd \"$RESOURCE_DIR\" && ./node_modules/.bin/tsc"],
     "source": "functions"
   },
   "firestore": {
@@ -53,18 +51,22 @@
   },
   "emulators": {
     "auth": {
+      "host": "0.0.0.0",
       "port": 9099
     },
     "functions": {
+      "host": "0.0.0.0",
       "port": 5001
     },
     "firestore": {
+      "host": "0.0.0.0",
       "port": 8080
     },
     "ui": {
       "enabled": true
     },
     "storage": {
+      "host": "0.0.0.0",
       "port": 9199,
       "rules": "storage.rules"
     }

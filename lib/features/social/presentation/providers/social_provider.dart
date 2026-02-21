@@ -1,4 +1,5 @@
 import 'package:daylog/features/auth/domain/models/user_model.dart';
+import 'package:daylog/features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'package:daylog/features/social/data/repositories/social_repository_impl.dart';
 import 'package:daylog/features/social/domain/repositories/social_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -83,6 +84,10 @@ final relationshipProvider =
 
 final incomingFollowRequestsProvider =
     StreamProvider<List<FollowRequestItem>>((ref) {
+  final authState = ref.watch(authViewModelProvider);
+  if (authState.valueOrNull == null) {
+    return const Stream.empty();
+  }
   final repository = ref.watch(socialRepositoryProvider);
   return repository.watchIncomingRequests();
 });

@@ -27,11 +27,22 @@ void main() async {
 
   if (kDebugMode && useEmulators) {
     try {
-      final host = Platform.isAndroid ? '10.0.2.2' : 'localhost';
+      // For physical devices, set EMULATOR_HOST in .env to your Mac's local IP
+      // e.g., EMULATOR_HOST=192.168.219.107
+      // For simulators/emulators, leave unset to use default localhost/10.0.2.2
+      final envHost = dotenv.env['EMULATOR_HOST'];
+      final host = envHost ?? (Platform.isAndroid ? '10.0.2.2' : 'localhost');
       await FirebaseAuth.instance.useAuthEmulator(host, 9099);
       FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
       FirebaseFunctions.instance.useFunctionsEmulator(host, 5001);
       await FirebaseStorage.instance.useStorageEmulator(host, 9199);
+
+      // IMPORTANT: Disable persistence for emulators to avoid sync loops and gRPC ping issues
+      FirebaseFirestore.instance.settings = const Settings(
+        persistenceEnabled: false,
+        sslEnabled: false,
+      );
+
       debugPrint('DEBUG: Connected to Firebase Emulators on $host');
     } catch (e) {
       debugPrint('DEBUG: Failed to connect to Firebase Emulators: $e');

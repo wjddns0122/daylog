@@ -196,6 +196,28 @@ GoRouter router(Ref ref) {
             const FollowListScreen(type: FollowListType.following),
       ),
       GoRoute(
+        path: '/users/:uid/followers',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final uid = state.pathParameters['uid']!;
+          return FollowListScreen(
+            type: FollowListType.followers,
+            userId: uid,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/users/:uid/following',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final uid = state.pathParameters['uid']!;
+          return FollowListScreen(
+            type: FollowListType.following,
+            userId: uid,
+          );
+        },
+      ),
+      GoRoute(
         path: '/profile/edit',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ProfileEditScreen(),
