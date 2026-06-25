@@ -122,3 +122,7 @@ lib/
 This project is licensed under the **MIT License**.
 
 Copyright © 2026 @Daylog. All rights reserved.
+
+---
+
+## [해커톤 발표영상](https://youtu.be/SitKBW4otTM)
